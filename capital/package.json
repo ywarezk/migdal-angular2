@@ -1,0 +1,19 @@
+{
+  "name": "capital",
+  "version": "1.0.0",
+  "description": "will turn a string to capital and then lowercase",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "capital",
+    "lowercase"
+  ],
+  "author": "Yariv Katz",
+  "license": "ISC",
+  "dependencies": {
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {}
+}
