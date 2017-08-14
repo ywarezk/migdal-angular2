@@ -10,8 +10,18 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "awesome-typescript-loader": "^3.2.2",
     "ts-loader": "^2.3.2",
     "typescript": "^2.4.2",
     "webpack": "^3.5.4"
+  },
+  "dependencies": {
+    "@angular/common": "^4.3.4",
+    "@angular/compiler": "^4.3.4",
+    "@angular/core": "^4.3.4",
+    "@angular/platform-browser": "^4.3.4",
+    "@angular/platform-browser-dynamic": "^4.3.4",
+    "rxjs": "^5.4.3",
+    "zone.js": "^0.8.16"
   }
 }

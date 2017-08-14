@@ -8,6 +8,10 @@ module.exports = {
 
     entry: './src/main.ts',
 
+    resolve: {
+        extensions: ['.js', '.ts']
+    },
+
     output: {
         filename: 'app.js',
         path: path.resolve(__dirname, 'dist')
