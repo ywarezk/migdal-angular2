@@ -2,8 +2,9 @@
  * entry point file
  */
 
-
-import {AppModule} from './app.module';
+import 'reflect-metadata';
+import 'zone.js';
+import {AppModule} from './app/app.module';
 import {platformBrowserDynamic} from "@angular/platform-browser-dynamic";
 
 platformBrowserDynamic().bootstrapModule(AppModule);
