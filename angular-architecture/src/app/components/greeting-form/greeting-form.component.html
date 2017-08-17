@@ -1,0 +1,10 @@
+<!--
+Template greeting-form component
+-->
+
+<form>
+    <label>Greeting</label>
+    <input name="greeting" type="text" [(ngModel)]="greetingInput" />
+    <br/>
+    <button (click)="addGreeting();" type="submit">Submit</button>
+</form>

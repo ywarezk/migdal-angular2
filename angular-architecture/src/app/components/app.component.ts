@@ -7,7 +7,10 @@ import {Component} from "@angular/core";
     // selector: '[app-component]' // for attribute
 
     template: `
-    <h1>Hello world</h1>
+    <div>
+        <greeting-form></greeting-form>
+        <greeting-list></greeting-list>
+    </div>
     `
 })
 export class AppComponent{

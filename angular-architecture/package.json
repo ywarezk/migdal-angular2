@@ -14,12 +14,14 @@
     "http-server": "^0.10.0",
     "ts-loader": "^2.3.2",
     "typescript": "^2.4.2",
-    "webpack": "^3.5.4"
+    "webpack": "^3.5.4",
+    "webpack-dev-server": "^2.7.1"
   },
   "dependencies": {
     "@angular/common": "^4.3.4",
     "@angular/compiler": "^4.3.4",
     "@angular/core": "^4.3.4",
+    "@angular/forms": "^4.3.5",
     "@angular/platform-browser": "^4.3.4",
     "@angular/platform-browser-dynamic": "^4.3.4",
     "reflect-metadata": "^0.1.10",

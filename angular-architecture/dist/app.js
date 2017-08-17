@@ -60,273 +60,11 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 18);
+/******/ 	return __webpack_require__(__webpack_require__.s = 19);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var root_1 = __webpack_require__(3);
-var toSubscriber_1 = __webpack_require__(22);
-var observable_1 = __webpack_require__(13);
-/**
- * A representation of any set of values over any amount of time. This is the most basic building block
- * of RxJS.
- *
- * @class Observable<T>
- */
-var Observable = (function () {
-    /**
-     * @constructor
-     * @param {Function} subscribe the function that is called when the Observable is
-     * initially subscribed to. This function is given a Subscriber, to which new values
-     * can be `next`ed, or an `error` method can be called to raise an error, or
-     * `complete` can be called to notify of a successful completion.
-     */
-    function Observable(subscribe) {
-        this._isScalar = false;
-        if (subscribe) {
-            this._subscribe = subscribe;
-        }
-    }
-    /**
-     * Creates a new Observable, with this Observable as the source, and the passed
-     * operator defined as the new observable's operator.
-     * @method lift
-     * @param {Operator} operator the operator defining the operation to take on the observable
-     * @return {Observable} a new observable with the Operator applied
-     */
-    Observable.prototype.lift = function (operator) {
-        var observable = new Observable();
-        observable.source = this;
-        observable.operator = operator;
-        return observable;
-    };
-    /**
-     * Invokes an execution of an Observable and registers Observer handlers for notifications it will emit.
-     *
-     * <span class="informal">Use it when you have all these Observables, but still nothing is happening.</span>
-     *
-     * `subscribe` is not a regular operator, but a method that calls Observable's internal `subscribe` function. It
-     * might be for example a function that you passed to a {@link create} static factory, but most of the time it is
-     * a library implementation, which defines what and when will be emitted by an Observable. This means that calling
-     * `subscribe` is actually the moment when Observable starts its work, not when it is created, as it is often
-     * thought.
-     *
-     * Apart from starting the execution of an Observable, this method allows you to listen for values
-     * that an Observable emits, as well as for when it completes or errors. You can achieve this in two
-     * following ways.
-     *
-     * The first way is creating an object that implements {@link Observer} interface. It should have methods
-     * defined by that interface, but note that it should be just a regular JavaScript object, which you can create
-     * yourself in any way you want (ES6 class, classic function constructor, object literal etc.). In particular do
-     * not attempt to use any RxJS implementation details to create Observers - you don't need them. Remember also
-     * that your object does not have to implement all methods. If you find yourself creating a method that doesn't
-     * do anything, you can simply omit it. Note however, that if `error` method is not provided, all errors will
-     * be left uncaught.
-     *
-     * The second way is to give up on Observer object altogether and simply provide callback functions in place of its methods.
-     * This means you can provide three functions as arguments to `subscribe`, where first function is equivalent
-     * of a `next` method, second of an `error` method and third of a `complete` method. Just as in case of Observer,
-     * if you do not need to listen for something, you can omit a function, preferably by passing `undefined` or `null`,
-     * since `subscribe` recognizes these functions by where they were placed in function call. When it comes
-     * to `error` function, just as before, if not provided, errors emitted by an Observable will be thrown.
-     *
-     * Whatever style of calling `subscribe` you use, in both cases it returns a Subscription object.
-     * This object allows you to call `unsubscribe` on it, which in turn will stop work that an Observable does and will clean
-     * up all resources that an Observable used. Note that cancelling a subscription will not call `complete` callback
-     * provided to `subscribe` function, which is reserved for a regular completion signal that comes from an Observable.
-     *
-     * Remember that callbacks provided to `subscribe` are not guaranteed to be called asynchronously.
-     * It is an Observable itself that decides when these functions will be called. For example {@link of}
-     * by default emits all its values synchronously. Always check documentation for how given Observable
-     * will behave when subscribed and if its default behavior can be modified with a {@link Scheduler}.
-     *
-     * @example <caption>Subscribe with an Observer</caption>
-     * const sumObserver = {
-     *   sum: 0,
-     *   next(value) {
-     *     console.log('Adding: ' + value);
-     *     this.sum = this.sum + value;
-     *   },
-     *   error() { // We actually could just remove this method,
-     *   },        // since we do not really care about errors right now.
-     *   complete() {
-     *     console.log('Sum equals: ' + this.sum);
-     *   }
-     * };
-     *
-     * Rx.Observable.of(1, 2, 3) // Synchronously emits 1, 2, 3 and then completes.
-     * .subscribe(sumObserver);
-     *
-     * // Logs:
-     * // "Adding: 1"
-     * // "Adding: 2"
-     * // "Adding: 3"
-     * // "Sum equals: 6"
-     *
-     *
-     * @example <caption>Subscribe with functions</caption>
-     * let sum = 0;
-     *
-     * Rx.Observable.of(1, 2, 3)
-     * .subscribe(
-     *   function(value) {
-     *     console.log('Adding: ' + value);
-     *     sum = sum + value;
-     *   },
-     *   undefined,
-     *   function() {
-     *     console.log('Sum equals: ' + sum);
-     *   }
-     * );
-     *
-     * // Logs:
-     * // "Adding: 1"
-     * // "Adding: 2"
-     * // "Adding: 3"
-     * // "Sum equals: 6"
-     *
-     *
-     * @example <caption>Cancel a subscription</caption>
-     * const subscription = Rx.Observable.interval(1000).subscribe(
-     *   num => console.log(num),
-     *   undefined,
-     *   () => console.log('completed!') // Will not be called, even
-     * );                                // when cancelling subscription
-     *
-     *
-     * setTimeout(() => {
-     *   subscription.unsubscribe();
-     *   console.log('unsubscribed!');
-     * }, 2500);
-     *
-     * // Logs:
-     * // 0 after 1s
-     * // 1 after 2s
-     * // "unsubscribed!" after 2.5s
-     *
-     *
-     * @param {Observer|Function} observerOrNext (optional) Either an observer with methods to be called,
-     *  or the first of three possible handlers, which is the handler for each value emitted from the subscribed
-     *  Observable.
-     * @param {Function} error (optional) A handler for a terminal event resulting from an error. If no error handler is provided,
-     *  the error will be thrown as unhandled.
-     * @param {Function} complete (optional) A handler for a terminal event resulting from successful completion.
-     * @return {ISubscription} a subscription reference to the registered handlers
-     * @method subscribe
-     */
-    Observable.prototype.subscribe = function (observerOrNext, error, complete) {
-        var operator = this.operator;
-        var sink = toSubscriber_1.toSubscriber(observerOrNext, error, complete);
-        if (operator) {
-            operator.call(sink, this.source);
-        }
-        else {
-            sink.add(this.source ? this._subscribe(sink) : this._trySubscribe(sink));
-        }
-        if (sink.syncErrorThrowable) {
-            sink.syncErrorThrowable = false;
-            if (sink.syncErrorThrown) {
-                throw sink.syncErrorValue;
-            }
-        }
-        return sink;
-    };
-    Observable.prototype._trySubscribe = function (sink) {
-        try {
-            return this._subscribe(sink);
-        }
-        catch (err) {
-            sink.syncErrorThrown = true;
-            sink.syncErrorValue = err;
-            sink.error(err);
-        }
-    };
-    /**
-     * @method forEach
-     * @param {Function} next a handler for each value emitted by the observable
-     * @param {PromiseConstructor} [PromiseCtor] a constructor function used to instantiate the Promise
-     * @return {Promise} a promise that either resolves on observable completion or
-     *  rejects with the handled error
-     */
-    Observable.prototype.forEach = function (next, PromiseCtor) {
-        var _this = this;
-        if (!PromiseCtor) {
-            if (root_1.root.Rx && root_1.root.Rx.config && root_1.root.Rx.config.Promise) {
-                PromiseCtor = root_1.root.Rx.config.Promise;
-            }
-            else if (root_1.root.Promise) {
-                PromiseCtor = root_1.root.Promise;
-            }
-        }
-        if (!PromiseCtor) {
-            throw new Error('no Promise impl found');
-        }
-        return new PromiseCtor(function (resolve, reject) {
-            // Must be declared in a separate statement to avoid a RefernceError when
-            // accessing subscription below in the closure due to Temporal Dead Zone.
-            var subscription;
-            subscription = _this.subscribe(function (value) {
-                if (subscription) {
-                    // if there is a subscription, then we can surmise
-                    // the next handling is asynchronous. Any errors thrown
-                    // need to be rejected explicitly and unsubscribe must be
-                    // called manually
-                    try {
-                        next(value);
-                    }
-                    catch (err) {
-                        reject(err);
-                        subscription.unsubscribe();
-                    }
-                }
-                else {
-                    // if there is NO subscription, then we're getting a nexted
-                    // value synchronously during subscription. We can just call it.
-                    // If it errors, Observable's `subscribe` will ensure the
-                    // unsubscription logic is called, then synchronously rethrow the error.
-                    // After that, Promise will trap the error and send it
-                    // down the rejection path.
-                    next(value);
-                }
-            }, reject, resolve);
-        });
-    };
-    Observable.prototype._subscribe = function (subscriber) {
-        return this.source.subscribe(subscriber);
-    };
-    /**
-     * An interop point defined by the es7-observable spec https://github.com/zenparsing/es-observable
-     * @method Symbol.observable
-     * @return {Observable} this instance of the observable
-     */
-    Observable.prototype[observable_1.observable] = function () {
-        return this;
-    };
-    // HACK: Since TypeScript inherits static properties too, we have to
-    // fight against TypeScript here so Subject can have a different static create signature
-    /**
-     * Creates a new cold Observable by calling the Observable constructor
-     * @static true
-     * @owner Observable
-     * @method create
-     * @param {Function} subscribe? the subscriber function to be passed to the Observable constructor
-     * @return {Observable} a new cold observable
-     */
-    Observable.create = function (subscribe) {
-        return new Observable(subscribe);
-    };
-    return Observable;
-}());
-exports.Observable = Observable;
-//# sourceMappingURL=Observable.js.map
-
-/***/ }),
-/* 1 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -526,11 +264,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵt", function() { return _def; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵu", function() { return DebugContext; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tslib__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_rxjs_Observable__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_rxjs_Observable__ = __webpack_require__(1);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_rxjs_Observable___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_rxjs_Observable__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_rxjs_observable_merge__ = __webpack_require__(26);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_rxjs_observable_merge__ = __webpack_require__(28);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_rxjs_observable_merge___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_rxjs_observable_merge__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_rxjs_operator_share__ = __webpack_require__(38);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_rxjs_operator_share__ = __webpack_require__(40);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_rxjs_operator_share___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_rxjs_operator_share__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_rxjs_Subject__ = __webpack_require__(8);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_rxjs_Subject___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_rxjs_Subject__);
@@ -6179,7 +5917,7 @@ var SystemJsNgModuleLoader = (function () {
         if (exportName === undefined) {
             exportName = 'default';
         }
-        return __webpack_require__(15)(module)
+        return __webpack_require__(16)(module)
             .then(function (module) { return module[exportName]; })
             .then(function (type) { return checkNotEmpty(type, module, exportName); })
             .then(function (type) { return _this._compiler.compileModuleAsync(type); });
@@ -6195,7 +5933,7 @@ var SystemJsNgModuleLoader = (function () {
             exportName = 'default';
             factoryClassSuffix = '';
         }
-        return __webpack_require__(15)(this._config.factoryPathPrefix + module + this._config.factoryPathSuffix)
+        return __webpack_require__(16)(this._config.factoryPathPrefix + module + this._config.factoryPathSuffix)
             .then(function (module) { return module[exportName + factoryClassSuffix]; })
             .then(function (factory) { return checkNotEmpty(factory, module, exportName); });
     };
@@ -15328,7 +15066,269 @@ function transition$$1(stateChangeExpr, steps) {
 
 //# sourceMappingURL=core.es5.js.map
 
-/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(6)))
+/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(5)))
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var root_1 = __webpack_require__(3);
+var toSubscriber_1 = __webpack_require__(24);
+var observable_1 = __webpack_require__(14);
+/**
+ * A representation of any set of values over any amount of time. This is the most basic building block
+ * of RxJS.
+ *
+ * @class Observable<T>
+ */
+var Observable = (function () {
+    /**
+     * @constructor
+     * @param {Function} subscribe the function that is called when the Observable is
+     * initially subscribed to. This function is given a Subscriber, to which new values
+     * can be `next`ed, or an `error` method can be called to raise an error, or
+     * `complete` can be called to notify of a successful completion.
+     */
+    function Observable(subscribe) {
+        this._isScalar = false;
+        if (subscribe) {
+            this._subscribe = subscribe;
+        }
+    }
+    /**
+     * Creates a new Observable, with this Observable as the source, and the passed
+     * operator defined as the new observable's operator.
+     * @method lift
+     * @param {Operator} operator the operator defining the operation to take on the observable
+     * @return {Observable} a new observable with the Operator applied
+     */
+    Observable.prototype.lift = function (operator) {
+        var observable = new Observable();
+        observable.source = this;
+        observable.operator = operator;
+        return observable;
+    };
+    /**
+     * Invokes an execution of an Observable and registers Observer handlers for notifications it will emit.
+     *
+     * <span class="informal">Use it when you have all these Observables, but still nothing is happening.</span>
+     *
+     * `subscribe` is not a regular operator, but a method that calls Observable's internal `subscribe` function. It
+     * might be for example a function that you passed to a {@link create} static factory, but most of the time it is
+     * a library implementation, which defines what and when will be emitted by an Observable. This means that calling
+     * `subscribe` is actually the moment when Observable starts its work, not when it is created, as it is often
+     * thought.
+     *
+     * Apart from starting the execution of an Observable, this method allows you to listen for values
+     * that an Observable emits, as well as for when it completes or errors. You can achieve this in two
+     * following ways.
+     *
+     * The first way is creating an object that implements {@link Observer} interface. It should have methods
+     * defined by that interface, but note that it should be just a regular JavaScript object, which you can create
+     * yourself in any way you want (ES6 class, classic function constructor, object literal etc.). In particular do
+     * not attempt to use any RxJS implementation details to create Observers - you don't need them. Remember also
+     * that your object does not have to implement all methods. If you find yourself creating a method that doesn't
+     * do anything, you can simply omit it. Note however, that if `error` method is not provided, all errors will
+     * be left uncaught.
+     *
+     * The second way is to give up on Observer object altogether and simply provide callback functions in place of its methods.
+     * This means you can provide three functions as arguments to `subscribe`, where first function is equivalent
+     * of a `next` method, second of an `error` method and third of a `complete` method. Just as in case of Observer,
+     * if you do not need to listen for something, you can omit a function, preferably by passing `undefined` or `null`,
+     * since `subscribe` recognizes these functions by where they were placed in function call. When it comes
+     * to `error` function, just as before, if not provided, errors emitted by an Observable will be thrown.
+     *
+     * Whatever style of calling `subscribe` you use, in both cases it returns a Subscription object.
+     * This object allows you to call `unsubscribe` on it, which in turn will stop work that an Observable does and will clean
+     * up all resources that an Observable used. Note that cancelling a subscription will not call `complete` callback
+     * provided to `subscribe` function, which is reserved for a regular completion signal that comes from an Observable.
+     *
+     * Remember that callbacks provided to `subscribe` are not guaranteed to be called asynchronously.
+     * It is an Observable itself that decides when these functions will be called. For example {@link of}
+     * by default emits all its values synchronously. Always check documentation for how given Observable
+     * will behave when subscribed and if its default behavior can be modified with a {@link Scheduler}.
+     *
+     * @example <caption>Subscribe with an Observer</caption>
+     * const sumObserver = {
+     *   sum: 0,
+     *   next(value) {
+     *     console.log('Adding: ' + value);
+     *     this.sum = this.sum + value;
+     *   },
+     *   error() { // We actually could just remove this method,
+     *   },        // since we do not really care about errors right now.
+     *   complete() {
+     *     console.log('Sum equals: ' + this.sum);
+     *   }
+     * };
+     *
+     * Rx.Observable.of(1, 2, 3) // Synchronously emits 1, 2, 3 and then completes.
+     * .subscribe(sumObserver);
+     *
+     * // Logs:
+     * // "Adding: 1"
+     * // "Adding: 2"
+     * // "Adding: 3"
+     * // "Sum equals: 6"
+     *
+     *
+     * @example <caption>Subscribe with functions</caption>
+     * let sum = 0;
+     *
+     * Rx.Observable.of(1, 2, 3)
+     * .subscribe(
+     *   function(value) {
+     *     console.log('Adding: ' + value);
+     *     sum = sum + value;
+     *   },
+     *   undefined,
+     *   function() {
+     *     console.log('Sum equals: ' + sum);
+     *   }
+     * );
+     *
+     * // Logs:
+     * // "Adding: 1"
+     * // "Adding: 2"
+     * // "Adding: 3"
+     * // "Sum equals: 6"
+     *
+     *
+     * @example <caption>Cancel a subscription</caption>
+     * const subscription = Rx.Observable.interval(1000).subscribe(
+     *   num => console.log(num),
+     *   undefined,
+     *   () => console.log('completed!') // Will not be called, even
+     * );                                // when cancelling subscription
+     *
+     *
+     * setTimeout(() => {
+     *   subscription.unsubscribe();
+     *   console.log('unsubscribed!');
+     * }, 2500);
+     *
+     * // Logs:
+     * // 0 after 1s
+     * // 1 after 2s
+     * // "unsubscribed!" after 2.5s
+     *
+     *
+     * @param {Observer|Function} observerOrNext (optional) Either an observer with methods to be called,
+     *  or the first of three possible handlers, which is the handler for each value emitted from the subscribed
+     *  Observable.
+     * @param {Function} error (optional) A handler for a terminal event resulting from an error. If no error handler is provided,
+     *  the error will be thrown as unhandled.
+     * @param {Function} complete (optional) A handler for a terminal event resulting from successful completion.
+     * @return {ISubscription} a subscription reference to the registered handlers
+     * @method subscribe
+     */
+    Observable.prototype.subscribe = function (observerOrNext, error, complete) {
+        var operator = this.operator;
+        var sink = toSubscriber_1.toSubscriber(observerOrNext, error, complete);
+        if (operator) {
+            operator.call(sink, this.source);
+        }
+        else {
+            sink.add(this.source ? this._subscribe(sink) : this._trySubscribe(sink));
+        }
+        if (sink.syncErrorThrowable) {
+            sink.syncErrorThrowable = false;
+            if (sink.syncErrorThrown) {
+                throw sink.syncErrorValue;
+            }
+        }
+        return sink;
+    };
+    Observable.prototype._trySubscribe = function (sink) {
+        try {
+            return this._subscribe(sink);
+        }
+        catch (err) {
+            sink.syncErrorThrown = true;
+            sink.syncErrorValue = err;
+            sink.error(err);
+        }
+    };
+    /**
+     * @method forEach
+     * @param {Function} next a handler for each value emitted by the observable
+     * @param {PromiseConstructor} [PromiseCtor] a constructor function used to instantiate the Promise
+     * @return {Promise} a promise that either resolves on observable completion or
+     *  rejects with the handled error
+     */
+    Observable.prototype.forEach = function (next, PromiseCtor) {
+        var _this = this;
+        if (!PromiseCtor) {
+            if (root_1.root.Rx && root_1.root.Rx.config && root_1.root.Rx.config.Promise) {
+                PromiseCtor = root_1.root.Rx.config.Promise;
+            }
+            else if (root_1.root.Promise) {
+                PromiseCtor = root_1.root.Promise;
+            }
+        }
+        if (!PromiseCtor) {
+            throw new Error('no Promise impl found');
+        }
+        return new PromiseCtor(function (resolve, reject) {
+            // Must be declared in a separate statement to avoid a RefernceError when
+            // accessing subscription below in the closure due to Temporal Dead Zone.
+            var subscription;
+            subscription = _this.subscribe(function (value) {
+                if (subscription) {
+                    // if there is a subscription, then we can surmise
+                    // the next handling is asynchronous. Any errors thrown
+                    // need to be rejected explicitly and unsubscribe must be
+                    // called manually
+                    try {
+                        next(value);
+                    }
+                    catch (err) {
+                        reject(err);
+                        subscription.unsubscribe();
+                    }
+                }
+                else {
+                    // if there is NO subscription, then we're getting a nexted
+                    // value synchronously during subscription. We can just call it.
+                    // If it errors, Observable's `subscribe` will ensure the
+                    // unsubscription logic is called, then synchronously rethrow the error.
+                    // After that, Promise will trap the error and send it
+                    // down the rejection path.
+                    next(value);
+                }
+            }, reject, resolve);
+        });
+    };
+    Observable.prototype._subscribe = function (subscriber) {
+        return this.source.subscribe(subscriber);
+    };
+    /**
+     * An interop point defined by the es7-observable spec https://github.com/zenparsing/es-observable
+     * @method Symbol.observable
+     * @return {Observable} this instance of the observable
+     */
+    Observable.prototype[observable_1.observable] = function () {
+        return this;
+    };
+    // HACK: Since TypeScript inherits static properties too, we have to
+    // fight against TypeScript here so Subject can have a different static create signature
+    /**
+     * Creates a new cold Observable by calling the Observable constructor
+     * @static true
+     * @owner Observable
+     * @method create
+     * @param {Function} subscribe? the subscriber function to be passed to the Observable constructor
+     * @return {Observable} a new cold observable
+     */
+    Observable.create = function (subscribe) {
+        return new Observable(subscribe);
+    };
+    return Observable;
+}());
+exports.Observable = Observable;
+//# sourceMappingURL=Observable.js.map
 
 /***/ }),
 /* 2 */
@@ -15537,7 +15537,7 @@ exports.root = _root;
     }
 })();
 //# sourceMappingURL=root.js.map
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(6)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5)))
 
 /***/ }),
 /* 4 */
@@ -15550,9 +15550,9 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var isFunction_1 = __webpack_require__(9);
-var Subscription_1 = __webpack_require__(5);
-var Observer_1 = __webpack_require__(12);
+var isFunction_1 = __webpack_require__(10);
+var Subscription_1 = __webpack_require__(6);
+var Observer_1 = __webpack_require__(13);
 var rxSubscriber_1 = __webpack_require__(7);
 /**
  * Implements the {@link Observer} interface and extends the
@@ -15811,16 +15811,43 @@ var SafeSubscriber = (function (_super) {
 
 /***/ }),
 /* 5 */
+/***/ (function(module, exports) {
+
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
+})();
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || Function("return this")() || (1,eval)("this");
+} catch(e) {
+	// This works if the window reference is available
+	if(typeof window === "object")
+		g = window;
+}
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
+
+
+/***/ }),
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var isArray_1 = __webpack_require__(23);
-var isObject_1 = __webpack_require__(10);
-var isFunction_1 = __webpack_require__(9);
-var tryCatch_1 = __webpack_require__(24);
-var errorObject_1 = __webpack_require__(11);
-var UnsubscriptionError_1 = __webpack_require__(25);
+var isArray_1 = __webpack_require__(25);
+var isObject_1 = __webpack_require__(11);
+var isFunction_1 = __webpack_require__(10);
+var tryCatch_1 = __webpack_require__(26);
+var errorObject_1 = __webpack_require__(12);
+var UnsubscriptionError_1 = __webpack_require__(27);
 /**
  * Represents a disposable resource, such as the execution of an Observable. A
  * Subscription has one important method, `unsubscribe`, that takes no argument
@@ -16009,33 +16036,6 @@ function flattenUnsubscriptionErrors(errors) {
 //# sourceMappingURL=Subscription.js.map
 
 /***/ }),
-/* 6 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || Function("return this")() || (1,eval)("this");
-} catch(e) {
-	// This works if the window reference is available
-	if(typeof window === "object")
-		g = window;
-}
-
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
-
-/***/ }),
 /* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -16062,11 +16062,11 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var Observable_1 = __webpack_require__(0);
+var Observable_1 = __webpack_require__(1);
 var Subscriber_1 = __webpack_require__(4);
-var Subscription_1 = __webpack_require__(5);
-var ObjectUnsubscribedError_1 = __webpack_require__(41);
-var SubjectSubscription_1 = __webpack_require__(42);
+var Subscription_1 = __webpack_require__(6);
+var ObjectUnsubscribedError_1 = __webpack_require__(43);
+var SubjectSubscription_1 = __webpack_require__(44);
 var rxSubscriber_1 = __webpack_require__(7);
 /**
  * @class SubjectSubscriber<T>
@@ -16231,6 +16231,41 @@ exports.AnonymousSubject = AnonymousSubject;
 
 "use strict";
 
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var core_1 = __webpack_require__(0);
+/**
+ * Created by yarivkatz on 17/08/2017.
+ */
+var GreetingService = (function () {
+    function GreetingService() {
+        this._greetings = [];
+    }
+    GreetingService.prototype.addGreeting = function (message) {
+        this._greetings.push(message);
+    };
+    GreetingService.prototype.getAllGreeting = function () {
+        return this._greetings;
+    };
+    GreetingService = __decorate([
+        core_1.Injectable()
+    ], GreetingService);
+    return GreetingService;
+}());
+exports.GreetingService = GreetingService;
+
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
 function isFunction(x) {
     return typeof x === 'function';
 }
@@ -16238,7 +16273,7 @@ exports.isFunction = isFunction;
 //# sourceMappingURL=isFunction.js.map
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16250,7 +16285,7 @@ exports.isObject = isObject;
 //# sourceMappingURL=isObject.js.map
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16260,7 +16295,7 @@ exports.errorObject = { e: {} };
 //# sourceMappingURL=errorObject.js.map
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16274,7 +16309,7 @@ exports.empty = {
 //# sourceMappingURL=Observer.js.map
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16306,7 +16341,7 @@ exports.$$observable = exports.observable;
 //# sourceMappingURL=observable.js.map
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16318,7 +16353,7 @@ exports.isScheduler = isScheduler;
 //# sourceMappingURL=isScheduler.js.map
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports) {
 
 function webpackEmptyAsyncContext(req) {
@@ -16331,10 +16366,10 @@ function webpackEmptyAsyncContext(req) {
 webpackEmptyAsyncContext.keys = function() { return []; };
 webpackEmptyAsyncContext.resolve = webpackEmptyAsyncContext;
 module.exports = webpackEmptyAsyncContext;
-webpackEmptyAsyncContext.id = 15;
+webpackEmptyAsyncContext.id = 16;
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -16384,8 +16419,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵd", function() { return EventManagerPlugin; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵe", function() { return DomSanitizerImpl; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tslib__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_common__ = __webpack_require__(17);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_core__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_common__ = __webpack_require__(18);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_core__ = __webpack_require__(0);
 
 /**
  * @license Angular v4.3.4
@@ -20824,7 +20859,7 @@ var VERSION = new __WEBPACK_IMPORTED_MODULE_2__angular_core__["Version"]('4.3.4'
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -20878,7 +20913,7 @@ var VERSION = new __WEBPACK_IMPORTED_MODULE_2__angular_core__["Version"]('4.3.4'
 /* unused harmony export ɵa */
 /* unused harmony export ɵb */
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tslib__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_core__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_core__ = __webpack_require__(0);
 
 /**
  * @license Angular v4.3.4
@@ -24858,7 +24893,7 @@ var VERSION = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["Version"]('4.3.4'
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -24867,15 +24902,15 @@ var VERSION = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["Version"]('4.3.4'
  * entry point file
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-__webpack_require__(19);
-__webpack_require__(47);
-var app_module_1 = __webpack_require__(21);
-var platform_browser_dynamic_1 = __webpack_require__(45);
+__webpack_require__(20);
+__webpack_require__(22);
+var app_module_1 = __webpack_require__(23);
+var platform_browser_dynamic_1 = __webpack_require__(49);
 platform_browser_dynamic_1.platformBrowserDynamic().bootstrapModule(app_module_1.AppModule);
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(process, global) {/*! *****************************************************************************
@@ -26003,10 +26038,10 @@ var Reflect;
             Function("return this;")());
 })(Reflect || (Reflect = {}));
 //# sourceMappingURL=Reflect.js.map
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20), __webpack_require__(6)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21), __webpack_require__(5)))
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -26196,7 +26231,2723 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 21 */
+/* 22 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {/**
+* @license
+* Copyright Google Inc. All Rights Reserved.
+*
+* Use of this source code is governed by an MIT-style license that can be
+* found in the LICENSE file at https://angular.io/license
+*/
+(function (global, factory) {
+	 true ? factory() :
+	typeof define === 'function' && define.amd ? define(factory) :
+	(factory());
+}(this, (function () { 'use strict';
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var Zone$1 = (function (global) {
+    var performance = global['performance'];
+    function mark(name) {
+        performance && performance['mark'] && performance['mark'](name);
+    }
+    function performanceMeasure(name, label) {
+        performance && performance['measure'] && performance['measure'](name, label);
+    }
+    mark('Zone');
+    if (global['Zone']) {
+        throw new Error('Zone already loaded.');
+    }
+    var Zone = (function () {
+        function Zone(parent, zoneSpec) {
+            this._properties = null;
+            this._parent = parent;
+            this._name = zoneSpec ? zoneSpec.name || 'unnamed' : '<root>';
+            this._properties = zoneSpec && zoneSpec.properties || {};
+            this._zoneDelegate =
+                new ZoneDelegate(this, this._parent && this._parent._zoneDelegate, zoneSpec);
+        }
+        Zone.assertZonePatched = function () {
+            if (global['Promise'] !== patches['ZoneAwarePromise']) {
+                throw new Error('Zone.js has detected that ZoneAwarePromise `(window|global).Promise` ' +
+                    'has been overwritten.\n' +
+                    'Most likely cause is that a Promise polyfill has been loaded ' +
+                    'after Zone.js (Polyfilling Promise api is not necessary when zone.js is loaded. ' +
+                    'If you must load one, do so before loading zone.js.)');
+            }
+        };
+        Object.defineProperty(Zone, "root", {
+            get: function () {
+                var zone = Zone.current;
+                while (zone.parent) {
+                    zone = zone.parent;
+                }
+                return zone;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Zone, "current", {
+            get: function () {
+                return _currentZoneFrame.zone;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        
+        Object.defineProperty(Zone, "currentTask", {
+            get: function () {
+                return _currentTask;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        
+        Zone.__load_patch = function (name, fn) {
+            if (patches.hasOwnProperty(name)) {
+                throw Error('Already loaded patch: ' + name);
+            }
+            else if (!global['__Zone_disable_' + name]) {
+                var perfName = 'Zone:' + name;
+                mark(perfName);
+                patches[name] = fn(global, Zone, _api);
+                performanceMeasure(perfName, perfName);
+            }
+        };
+        Object.defineProperty(Zone.prototype, "parent", {
+            get: function () {
+                return this._parent;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        
+        Object.defineProperty(Zone.prototype, "name", {
+            get: function () {
+                return this._name;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        
+        Zone.prototype.get = function (key) {
+            var zone = this.getZoneWith(key);
+            if (zone)
+                return zone._properties[key];
+        };
+        Zone.prototype.getZoneWith = function (key) {
+            var current = this;
+            while (current) {
+                if (current._properties.hasOwnProperty(key)) {
+                    return current;
+                }
+                current = current._parent;
+            }
+            return null;
+        };
+        Zone.prototype.fork = function (zoneSpec) {
+            if (!zoneSpec)
+                throw new Error('ZoneSpec required!');
+            return this._zoneDelegate.fork(this, zoneSpec);
+        };
+        Zone.prototype.wrap = function (callback, source) {
+            if (typeof callback !== 'function') {
+                throw new Error('Expecting function got: ' + callback);
+            }
+            var _callback = this._zoneDelegate.intercept(this, callback, source);
+            var zone = this;
+            return function () {
+                return zone.runGuarded(_callback, this, arguments, source);
+            };
+        };
+        Zone.prototype.run = function (callback, applyThis, applyArgs, source) {
+            if (applyThis === void 0) { applyThis = undefined; }
+            if (applyArgs === void 0) { applyArgs = null; }
+            if (source === void 0) { source = null; }
+            _currentZoneFrame = { parent: _currentZoneFrame, zone: this };
+            try {
+                return this._zoneDelegate.invoke(this, callback, applyThis, applyArgs, source);
+            }
+            finally {
+                _currentZoneFrame = _currentZoneFrame.parent;
+            }
+        };
+        Zone.prototype.runGuarded = function (callback, applyThis, applyArgs, source) {
+            if (applyThis === void 0) { applyThis = null; }
+            if (applyArgs === void 0) { applyArgs = null; }
+            if (source === void 0) { source = null; }
+            _currentZoneFrame = { parent: _currentZoneFrame, zone: this };
+            try {
+                try {
+                    return this._zoneDelegate.invoke(this, callback, applyThis, applyArgs, source);
+                }
+                catch (error) {
+                    if (this._zoneDelegate.handleError(this, error)) {
+                        throw error;
+                    }
+                }
+            }
+            finally {
+                _currentZoneFrame = _currentZoneFrame.parent;
+            }
+        };
+        Zone.prototype.runTask = function (task, applyThis, applyArgs) {
+            if (task.zone != this) {
+                throw new Error('A task can only be run in the zone of creation! (Creation: ' +
+                    (task.zone || NO_ZONE).name + '; Execution: ' + this.name + ')');
+            }
+            // https://github.com/angular/zone.js/issues/778, sometimes eventTask
+            // will run in notScheduled(canceled) state, we should not try to
+            // run such kind of task but just return
+            // we have to define an variable here, if not
+            // typescript compiler will complain below
+            var isNotScheduled = task.state === notScheduled;
+            if (isNotScheduled && task.type === eventTask) {
+                return;
+            }
+            var reEntryGuard = task.state != running;
+            reEntryGuard && task._transitionTo(running, scheduled);
+            task.runCount++;
+            var previousTask = _currentTask;
+            _currentTask = task;
+            _currentZoneFrame = { parent: _currentZoneFrame, zone: this };
+            try {
+                if (task.type == macroTask && task.data && !task.data.isPeriodic) {
+                    task.cancelFn = null;
+                }
+                try {
+                    return this._zoneDelegate.invokeTask(this, task, applyThis, applyArgs);
+                }
+                catch (error) {
+                    if (this._zoneDelegate.handleError(this, error)) {
+                        throw error;
+                    }
+                }
+            }
+            finally {
+                // if the task's state is notScheduled or unknown, then it has already been cancelled
+                // we should not reset the state to scheduled
+                if (task.state !== notScheduled && task.state !== unknown) {
+                    if (task.type == eventTask || (task.data && task.data.isPeriodic)) {
+                        reEntryGuard && task._transitionTo(scheduled, running);
+                    }
+                    else {
+                        task.runCount = 0;
+                        this._updateTaskCount(task, -1);
+                        reEntryGuard &&
+                            task._transitionTo(notScheduled, running, notScheduled);
+                    }
+                }
+                _currentZoneFrame = _currentZoneFrame.parent;
+                _currentTask = previousTask;
+            }
+        };
+        Zone.prototype.scheduleTask = function (task) {
+            if (task.zone && task.zone !== this) {
+                // check if the task was rescheduled, the newZone
+                // should not be the children of the original zone
+                var newZone = this;
+                while (newZone) {
+                    if (newZone === task.zone) {
+                        throw Error("can not reschedule task to " + this
+                            .name + " which is descendants of the original zone " + task.zone.name);
+                    }
+                    newZone = newZone.parent;
+                }
+            }
+            task._transitionTo(scheduling, notScheduled);
+            var zoneDelegates = [];
+            task._zoneDelegates = zoneDelegates;
+            task._zone = this;
+            try {
+                task = this._zoneDelegate.scheduleTask(this, task);
+            }
+            catch (err) {
+                // should set task's state to unknown when scheduleTask throw error
+                // because the err may from reschedule, so the fromState maybe notScheduled
+                task._transitionTo(unknown, scheduling, notScheduled);
+                // TODO: @JiaLiPassion, should we check the result from handleError?
+                this._zoneDelegate.handleError(this, err);
+                throw err;
+            }
+            if (task._zoneDelegates === zoneDelegates) {
+                // we have to check because internally the delegate can reschedule the task.
+                this._updateTaskCount(task, 1);
+            }
+            if (task.state == scheduling) {
+                task._transitionTo(scheduled, scheduling);
+            }
+            return task;
+        };
+        Zone.prototype.scheduleMicroTask = function (source, callback, data, customSchedule) {
+            return this.scheduleTask(new ZoneTask(microTask, source, callback, data, customSchedule, null));
+        };
+        Zone.prototype.scheduleMacroTask = function (source, callback, data, customSchedule, customCancel) {
+            return this.scheduleTask(new ZoneTask(macroTask, source, callback, data, customSchedule, customCancel));
+        };
+        Zone.prototype.scheduleEventTask = function (source, callback, data, customSchedule, customCancel) {
+            return this.scheduleTask(new ZoneTask(eventTask, source, callback, data, customSchedule, customCancel));
+        };
+        Zone.prototype.cancelTask = function (task) {
+            if (task.zone != this)
+                throw new Error('A task can only be cancelled in the zone of creation! (Creation: ' +
+                    (task.zone || NO_ZONE).name + '; Execution: ' + this.name + ')');
+            task._transitionTo(canceling, scheduled, running);
+            try {
+                this._zoneDelegate.cancelTask(this, task);
+            }
+            catch (err) {
+                // if error occurs when cancelTask, transit the state to unknown
+                task._transitionTo(unknown, canceling);
+                this._zoneDelegate.handleError(this, err);
+                throw err;
+            }
+            this._updateTaskCount(task, -1);
+            task._transitionTo(notScheduled, canceling);
+            task.runCount = 0;
+            return task;
+        };
+        Zone.prototype._updateTaskCount = function (task, count) {
+            var zoneDelegates = task._zoneDelegates;
+            if (count == -1) {
+                task._zoneDelegates = null;
+            }
+            for (var i = 0; i < zoneDelegates.length; i++) {
+                zoneDelegates[i]._updateTaskCount(task.type, count);
+            }
+        };
+        return Zone;
+    }());
+    Zone.__symbol__ = __symbol__;
+    var DELEGATE_ZS = {
+        name: '',
+        onHasTask: function (delegate, _, target, hasTaskState) {
+            return delegate.hasTask(target, hasTaskState);
+        },
+        onScheduleTask: function (delegate, _, target, task) {
+            return delegate.scheduleTask(target, task);
+        },
+        onInvokeTask: function (delegate, _, target, task, applyThis, applyArgs) { return delegate.invokeTask(target, task, applyThis, applyArgs); },
+        onCancelTask: function (delegate, _, target, task) {
+            return delegate.cancelTask(target, task);
+        }
+    };
+    var ZoneDelegate = (function () {
+        function ZoneDelegate(zone, parentDelegate, zoneSpec) {
+            this._taskCounts = { 'microTask': 0, 'macroTask': 0, 'eventTask': 0 };
+            this.zone = zone;
+            this._parentDelegate = parentDelegate;
+            this._forkZS = zoneSpec && (zoneSpec && zoneSpec.onFork ? zoneSpec : parentDelegate._forkZS);
+            this._forkDlgt = zoneSpec && (zoneSpec.onFork ? parentDelegate : parentDelegate._forkDlgt);
+            this._forkCurrZone = zoneSpec && (zoneSpec.onFork ? this.zone : parentDelegate.zone);
+            this._interceptZS =
+                zoneSpec && (zoneSpec.onIntercept ? zoneSpec : parentDelegate._interceptZS);
+            this._interceptDlgt =
+                zoneSpec && (zoneSpec.onIntercept ? parentDelegate : parentDelegate._interceptDlgt);
+            this._interceptCurrZone =
+                zoneSpec && (zoneSpec.onIntercept ? this.zone : parentDelegate.zone);
+            this._invokeZS = zoneSpec && (zoneSpec.onInvoke ? zoneSpec : parentDelegate._invokeZS);
+            this._invokeDlgt =
+                zoneSpec && (zoneSpec.onInvoke ? parentDelegate : parentDelegate._invokeDlgt);
+            this._invokeCurrZone = zoneSpec && (zoneSpec.onInvoke ? this.zone : parentDelegate.zone);
+            this._handleErrorZS =
+                zoneSpec && (zoneSpec.onHandleError ? zoneSpec : parentDelegate._handleErrorZS);
+            this._handleErrorDlgt =
+                zoneSpec && (zoneSpec.onHandleError ? parentDelegate : parentDelegate._handleErrorDlgt);
+            this._handleErrorCurrZone =
+                zoneSpec && (zoneSpec.onHandleError ? this.zone : parentDelegate.zone);
+            this._scheduleTaskZS =
+                zoneSpec && (zoneSpec.onScheduleTask ? zoneSpec : parentDelegate._scheduleTaskZS);
+            this._scheduleTaskDlgt =
+                zoneSpec && (zoneSpec.onScheduleTask ? parentDelegate : parentDelegate._scheduleTaskDlgt);
+            this._scheduleTaskCurrZone =
+                zoneSpec && (zoneSpec.onScheduleTask ? this.zone : parentDelegate.zone);
+            this._invokeTaskZS =
+                zoneSpec && (zoneSpec.onInvokeTask ? zoneSpec : parentDelegate._invokeTaskZS);
+            this._invokeTaskDlgt =
+                zoneSpec && (zoneSpec.onInvokeTask ? parentDelegate : parentDelegate._invokeTaskDlgt);
+            this._invokeTaskCurrZone =
+                zoneSpec && (zoneSpec.onInvokeTask ? this.zone : parentDelegate.zone);
+            this._cancelTaskZS =
+                zoneSpec && (zoneSpec.onCancelTask ? zoneSpec : parentDelegate._cancelTaskZS);
+            this._cancelTaskDlgt =
+                zoneSpec && (zoneSpec.onCancelTask ? parentDelegate : parentDelegate._cancelTaskDlgt);
+            this._cancelTaskCurrZone =
+                zoneSpec && (zoneSpec.onCancelTask ? this.zone : parentDelegate.zone);
+            this._hasTaskZS = null;
+            this._hasTaskDlgt = null;
+            this._hasTaskDlgtOwner = null;
+            this._hasTaskCurrZone = null;
+            var zoneSpecHasTask = zoneSpec && zoneSpec.onHasTask;
+            var parentHasTask = parentDelegate && parentDelegate._hasTaskZS;
+            if (zoneSpecHasTask || parentHasTask) {
+                // If we need to report hasTask, than this ZS needs to do ref counting on tasks. In such
+                // a case all task related interceptors must go through this ZD. We can't short circuit it.
+                this._hasTaskZS = zoneSpecHasTask ? zoneSpec : DELEGATE_ZS;
+                this._hasTaskDlgt = parentDelegate;
+                this._hasTaskDlgtOwner = this;
+                this._hasTaskCurrZone = zone;
+                if (!zoneSpec.onScheduleTask) {
+                    this._scheduleTaskZS = DELEGATE_ZS;
+                    this._scheduleTaskDlgt = parentDelegate;
+                    this._scheduleTaskCurrZone = this.zone;
+                }
+                if (!zoneSpec.onInvokeTask) {
+                    this._invokeTaskZS = DELEGATE_ZS;
+                    this._invokeTaskDlgt = parentDelegate;
+                    this._invokeTaskCurrZone = this.zone;
+                }
+                if (!zoneSpec.onCancelTask) {
+                    this._cancelTaskZS = DELEGATE_ZS;
+                    this._cancelTaskDlgt = parentDelegate;
+                    this._cancelTaskCurrZone = this.zone;
+                }
+            }
+        }
+        ZoneDelegate.prototype.fork = function (targetZone, zoneSpec) {
+            return this._forkZS ? this._forkZS.onFork(this._forkDlgt, this.zone, targetZone, zoneSpec) :
+                new Zone(targetZone, zoneSpec);
+        };
+        ZoneDelegate.prototype.intercept = function (targetZone, callback, source) {
+            return this._interceptZS ?
+                this._interceptZS.onIntercept(this._interceptDlgt, this._interceptCurrZone, targetZone, callback, source) :
+                callback;
+        };
+        ZoneDelegate.prototype.invoke = function (targetZone, callback, applyThis, applyArgs, source) {
+            return this._invokeZS ?
+                this._invokeZS.onInvoke(this._invokeDlgt, this._invokeCurrZone, targetZone, callback, applyThis, applyArgs, source) :
+                callback.apply(applyThis, applyArgs);
+        };
+        ZoneDelegate.prototype.handleError = function (targetZone, error) {
+            return this._handleErrorZS ?
+                this._handleErrorZS.onHandleError(this._handleErrorDlgt, this._handleErrorCurrZone, targetZone, error) :
+                true;
+        };
+        ZoneDelegate.prototype.scheduleTask = function (targetZone, task) {
+            var returnTask = task;
+            if (this._scheduleTaskZS) {
+                if (this._hasTaskZS) {
+                    returnTask._zoneDelegates.push(this._hasTaskDlgtOwner);
+                }
+                returnTask = this._scheduleTaskZS.onScheduleTask(this._scheduleTaskDlgt, this._scheduleTaskCurrZone, targetZone, task);
+                if (!returnTask)
+                    returnTask = task;
+            }
+            else {
+                if (task.scheduleFn) {
+                    task.scheduleFn(task);
+                }
+                else if (task.type == microTask) {
+                    scheduleMicroTask(task);
+                }
+                else {
+                    throw new Error('Task is missing scheduleFn.');
+                }
+            }
+            return returnTask;
+        };
+        ZoneDelegate.prototype.invokeTask = function (targetZone, task, applyThis, applyArgs) {
+            return this._invokeTaskZS ?
+                this._invokeTaskZS.onInvokeTask(this._invokeTaskDlgt, this._invokeTaskCurrZone, targetZone, task, applyThis, applyArgs) :
+                task.callback.apply(applyThis, applyArgs);
+        };
+        ZoneDelegate.prototype.cancelTask = function (targetZone, task) {
+            var value;
+            if (this._cancelTaskZS) {
+                value = this._cancelTaskZS.onCancelTask(this._cancelTaskDlgt, this._cancelTaskCurrZone, targetZone, task);
+            }
+            else {
+                if (!task.cancelFn) {
+                    throw Error('Task is not cancelable');
+                }
+                value = task.cancelFn(task);
+            }
+            return value;
+        };
+        ZoneDelegate.prototype.hasTask = function (targetZone, isEmpty) {
+            // hasTask should not throw error so other ZoneDelegate
+            // can still trigger hasTask callback
+            try {
+                return this._hasTaskZS &&
+                    this._hasTaskZS.onHasTask(this._hasTaskDlgt, this._hasTaskCurrZone, targetZone, isEmpty);
+            }
+            catch (err) {
+                this.handleError(targetZone, err);
+            }
+        };
+        ZoneDelegate.prototype._updateTaskCount = function (type, count) {
+            var counts = this._taskCounts;
+            var prev = counts[type];
+            var next = counts[type] = prev + count;
+            if (next < 0) {
+                throw new Error('More tasks executed then were scheduled.');
+            }
+            if (prev == 0 || next == 0) {
+                var isEmpty = {
+                    microTask: counts.microTask > 0,
+                    macroTask: counts.macroTask > 0,
+                    eventTask: counts.eventTask > 0,
+                    change: type
+                };
+                this.hasTask(this.zone, isEmpty);
+            }
+        };
+        return ZoneDelegate;
+    }());
+    var ZoneTask = (function () {
+        function ZoneTask(type, source, callback, options, scheduleFn, cancelFn) {
+            this._zone = null;
+            this.runCount = 0;
+            this._zoneDelegates = null;
+            this._state = 'notScheduled';
+            this.type = type;
+            this.source = source;
+            this.data = options;
+            this.scheduleFn = scheduleFn;
+            this.cancelFn = cancelFn;
+            this.callback = callback;
+            var self = this;
+            if (type === eventTask && options && options.isUsingGlobalCallback) {
+                this.invoke = ZoneTask.invokeTask;
+            }
+            else {
+                this.invoke = function () {
+                    return ZoneTask.invokeTask.apply(global, [self, this, arguments]);
+                };
+            }
+        }
+        ZoneTask.invokeTask = function (task, target, args) {
+            if (!task) {
+                task = this;
+            }
+            _numberOfNestedTaskFrames++;
+            try {
+                task.runCount++;
+                return task.zone.runTask(task, target, args);
+            }
+            finally {
+                if (_numberOfNestedTaskFrames == 1) {
+                    drainMicroTaskQueue();
+                }
+                _numberOfNestedTaskFrames--;
+            }
+        };
+        Object.defineProperty(ZoneTask.prototype, "zone", {
+            get: function () {
+                return this._zone;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ZoneTask.prototype, "state", {
+            get: function () {
+                return this._state;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        ZoneTask.prototype.cancelScheduleRequest = function () {
+            this._transitionTo(notScheduled, scheduling);
+        };
+        ZoneTask.prototype._transitionTo = function (toState, fromState1, fromState2) {
+            if (this._state === fromState1 || this._state === fromState2) {
+                this._state = toState;
+                if (toState == notScheduled) {
+                    this._zoneDelegates = null;
+                }
+            }
+            else {
+                throw new Error(this.type + " '" + this.source + "': can not transition to '" + toState + "', expecting state '" + fromState1 + "'" + (fromState2 ?
+                    ' or \'' + fromState2 + '\'' :
+                    '') + ", was '" + this._state + "'.");
+            }
+        };
+        ZoneTask.prototype.toString = function () {
+            if (this.data && typeof this.data.handleId !== 'undefined') {
+                return this.data.handleId;
+            }
+            else {
+                return Object.prototype.toString.call(this);
+            }
+        };
+        // add toJSON method to prevent cyclic error when
+        // call JSON.stringify(zoneTask)
+        ZoneTask.prototype.toJSON = function () {
+            return {
+                type: this.type,
+                state: this.state,
+                source: this.source,
+                zone: this.zone.name,
+                invoke: this.invoke,
+                scheduleFn: this.scheduleFn,
+                cancelFn: this.cancelFn,
+                runCount: this.runCount,
+                callback: this.callback
+            };
+        };
+        return ZoneTask;
+    }());
+    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
+    ///  MICROTASK QUEUE
+    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
+    var symbolSetTimeout = __symbol__('setTimeout');
+    var symbolPromise = __symbol__('Promise');
+    var symbolThen = __symbol__('then');
+    var _microTaskQueue = [];
+    var _isDrainingMicrotaskQueue = false;
+    function scheduleMicroTask(task) {
+        // if we are not running in any task, and there has not been anything scheduled
+        // we must bootstrap the initial task creation by manually scheduling the drain
+        if (_numberOfNestedTaskFrames === 0 && _microTaskQueue.length === 0) {
+            // We are not running in Task, so we need to kickstart the microtask queue.
+            if (global[symbolPromise]) {
+                global[symbolPromise].resolve(0)[symbolThen](drainMicroTaskQueue);
+            }
+            else {
+                global[symbolSetTimeout](drainMicroTaskQueue, 0);
+            }
+        }
+        task && _microTaskQueue.push(task);
+    }
+    function drainMicroTaskQueue() {
+        if (!_isDrainingMicrotaskQueue) {
+            _isDrainingMicrotaskQueue = true;
+            while (_microTaskQueue.length) {
+                var queue = _microTaskQueue;
+                _microTaskQueue = [];
+                for (var i = 0; i < queue.length; i++) {
+                    var task = queue[i];
+                    try {
+                        task.zone.runTask(task, null, null);
+                    }
+                    catch (error) {
+                        _api.onUnhandledError(error);
+                    }
+                }
+            }
+            var showError = !Zone[__symbol__('ignoreConsoleErrorUncaughtError')];
+            _api.microtaskDrainDone();
+            _isDrainingMicrotaskQueue = false;
+        }
+    }
+    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
+    ///  BOOTSTRAP
+    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
+    var NO_ZONE = { name: 'NO ZONE' };
+    var notScheduled = 'notScheduled', scheduling = 'scheduling', scheduled = 'scheduled', running = 'running', canceling = 'canceling', unknown = 'unknown';
+    var microTask = 'microTask', macroTask = 'macroTask', eventTask = 'eventTask';
+    var patches = {};
+    var _api = {
+        symbol: __symbol__,
+        currentZoneFrame: function () { return _currentZoneFrame; },
+        onUnhandledError: noop,
+        microtaskDrainDone: noop,
+        scheduleMicroTask: scheduleMicroTask,
+        showUncaughtError: function () { return !Zone[__symbol__('ignoreConsoleErrorUncaughtError')]; },
+        patchEventTarget: function () { return []; },
+        patchOnProperties: noop,
+        patchMethod: function () { return noop; },
+    };
+    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
+    var _currentTask = null;
+    var _numberOfNestedTaskFrames = 0;
+    function noop() { }
+    function __symbol__(name) {
+        return '__zone_symbol__' + name;
+    }
+    performanceMeasure('Zone', 'Zone');
+    return global['Zone'] = Zone;
+})(typeof window !== 'undefined' && window || typeof self !== 'undefined' && self || global);
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+Zone.__load_patch('ZoneAwarePromise', function (global, Zone, api) {
+    var __symbol__ = api.symbol;
+    var _uncaughtPromiseErrors = [];
+    var symbolPromise = __symbol__('Promise');
+    var symbolThen = __symbol__('then');
+    api.onUnhandledError = function (e) {
+        if (api.showUncaughtError()) {
+            var rejection = e && e.rejection;
+            if (rejection) {
+                console.error('Unhandled Promise rejection:', rejection instanceof Error ? rejection.message : rejection, '; Zone:', e.zone.name, '; Task:', e.task && e.task.source, '; Value:', rejection, rejection instanceof Error ? rejection.stack : undefined);
+            }
+            else {
+                console.error(e);
+            }
+        }
+    };
+    api.microtaskDrainDone = function () {
+        while (_uncaughtPromiseErrors.length) {
+            var _loop_1 = function () {
+                var uncaughtPromiseError = _uncaughtPromiseErrors.shift();
+                try {
+                    uncaughtPromiseError.zone.runGuarded(function () {
+                        throw uncaughtPromiseError;
+                    });
+                }
+                catch (error) {
+                    handleUnhandledRejection(error);
+                }
+            };
+            while (_uncaughtPromiseErrors.length) {
+                _loop_1();
+            }
+        }
+    };
+    function handleUnhandledRejection(e) {
+        api.onUnhandledError(e);
+        try {
+            var handler = Zone[__symbol__('unhandledPromiseRejectionHandler')];
+            if (handler && typeof handler === 'function') {
+                handler.apply(this, [e]);
+            }
+        }
+        catch (err) {
+        }
+    }
+    function isThenable(value) {
+        return value && value.then;
+    }
+    function forwardResolution(value) {
+        return value;
+    }
+    function forwardRejection(rejection) {
+        return ZoneAwarePromise.reject(rejection);
+    }
+    var symbolState = __symbol__('state');
+    var symbolValue = __symbol__('value');
+    var source = 'Promise.then';
+    var UNRESOLVED = null;
+    var RESOLVED = true;
+    var REJECTED = false;
+    var REJECTED_NO_CATCH = 0;
+    function makeResolver(promise, state) {
+        return function (v) {
+            try {
+                resolvePromise(promise, state, v);
+            }
+            catch (err) {
+                resolvePromise(promise, false, err);
+            }
+            // Do not return value or you will break the Promise spec.
+        };
+    }
+    var once = function () {
+        var wasCalled = false;
+        return function wrapper(wrappedFunction) {
+            return function () {
+                if (wasCalled) {
+                    return;
+                }
+                wasCalled = true;
+                wrappedFunction.apply(null, arguments);
+            };
+        };
+    };
+    // Promise Resolution
+    function resolvePromise(promise, state, value) {
+        var onceWrapper = once();
+        if (promise === value) {
+            throw new TypeError('Promise resolved with itself');
+        }
+        if (promise[symbolState] === UNRESOLVED) {
+            // should only get value.then once based on promise spec.
+            var then = null;
+            try {
+                if (typeof value === 'object' || typeof value === 'function') {
+                    then = value && value.then;
+                }
+            }
+            catch (err) {
+                onceWrapper(function () {
+                    resolvePromise(promise, false, err);
+                })();
+                return promise;
+            }
+            // if (value instanceof ZoneAwarePromise) {
+            if (state !== REJECTED && value instanceof ZoneAwarePromise &&
+                value.hasOwnProperty(symbolState) && value.hasOwnProperty(symbolValue) &&
+                value[symbolState] !== UNRESOLVED) {
+                clearRejectedNoCatch(value);
+                resolvePromise(promise, value[symbolState], value[symbolValue]);
+            }
+            else if (state !== REJECTED && typeof then === 'function') {
+                try {
+                    then.apply(value, [
+                        onceWrapper(makeResolver(promise, state)), onceWrapper(makeResolver(promise, false))
+                    ]);
+                }
+                catch (err) {
+                    onceWrapper(function () {
+                        resolvePromise(promise, false, err);
+                    })();
+                }
+            }
+            else {
+                promise[symbolState] = state;
+                var queue = promise[symbolValue];
+                promise[symbolValue] = value;
+                // record task information in value when error occurs, so we can
+                // do some additional work such as render longStackTrace
+                if (state === REJECTED && value instanceof Error) {
+                    value[__symbol__('currentTask')] = Zone.currentTask;
+                }
+                for (var i = 0; i < queue.length;) {
+                    scheduleResolveOrReject(promise, queue[i++], queue[i++], queue[i++], queue[i++]);
+                }
+                if (queue.length == 0 && state == REJECTED) {
+                    promise[symbolState] = REJECTED_NO_CATCH;
+                    try {
+                        throw new Error('Uncaught (in promise): ' + value +
+                            (value && value.stack ? '\n' + value.stack : ''));
+                    }
+                    catch (err) {
+                        var error_1 = err;
+                        error_1.rejection = value;
+                        error_1.promise = promise;
+                        error_1.zone = Zone.current;
+                        error_1.task = Zone.currentTask;
+                        _uncaughtPromiseErrors.push(error_1);
+                        api.scheduleMicroTask(); // to make sure that it is running
+                    }
+                }
+            }
+        }
+        // Resolving an already resolved promise is a noop.
+        return promise;
+    }
+    function clearRejectedNoCatch(promise) {
+        if (promise[symbolState] === REJECTED_NO_CATCH) {
+            // if the promise is rejected no catch status
+            // and queue.length > 0, means there is a error handler
+            // here to handle the rejected promise, we should trigger
+            // windows.rejectionhandled eventHandler or nodejs rejectionHandled
+            // eventHandler
+            try {
+                var handler = Zone[__symbol__('rejectionHandledHandler')];
+                if (handler && typeof handler === 'function') {
+                    handler.apply(this, [{ rejection: promise[symbolValue], promise: promise }]);
+                }
+            }
+            catch (err) {
+            }
+            promise[symbolState] = REJECTED;
+            for (var i = 0; i < _uncaughtPromiseErrors.length; i++) {
+                if (promise === _uncaughtPromiseErrors[i].promise) {
+                    _uncaughtPromiseErrors.splice(i, 1);
+                }
+            }
+        }
+    }
+    function scheduleResolveOrReject(promise, zone, chainPromise, onFulfilled, onRejected) {
+        clearRejectedNoCatch(promise);
+        var delegate = promise[symbolState] ?
+            (typeof onFulfilled === 'function') ? onFulfilled : forwardResolution :
+            (typeof onRejected === 'function') ? onRejected : forwardRejection;
+        zone.scheduleMicroTask(source, function () {
+            try {
+                resolvePromise(chainPromise, true, zone.run(delegate, undefined, [promise[symbolValue]]));
+            }
+            catch (error) {
+                resolvePromise(chainPromise, false, error);
+            }
+        });
+    }
+    var ZoneAwarePromise = (function () {
+        function ZoneAwarePromise(executor) {
+            var promise = this;
+            if (!(promise instanceof ZoneAwarePromise)) {
+                throw new Error('Must be an instanceof Promise.');
+            }
+            promise[symbolState] = UNRESOLVED;
+            promise[symbolValue] = []; // queue;
+            try {
+                executor && executor(makeResolver(promise, RESOLVED), makeResolver(promise, REJECTED));
+            }
+            catch (error) {
+                resolvePromise(promise, false, error);
+            }
+        }
+        ZoneAwarePromise.toString = function () {
+            return 'function ZoneAwarePromise() { [native code] }';
+        };
+        ZoneAwarePromise.resolve = function (value) {
+            return resolvePromise(new this(null), RESOLVED, value);
+        };
+        ZoneAwarePromise.reject = function (error) {
+            return resolvePromise(new this(null), REJECTED, error);
+        };
+        ZoneAwarePromise.race = function (values) {
+            var resolve;
+            var reject;
+            var promise = new this(function (res, rej) {
+                _a = [res, rej], resolve = _a[0], reject = _a[1];
+                var _a;
+            });
+            function onResolve(value) {
+                promise && (promise = null || resolve(value));
+            }
+            function onReject(error) {
+                promise && (promise = null || reject(error));
+            }
+            for (var _i = 0, values_1 = values; _i < values_1.length; _i++) {
+                var value = values_1[_i];
+                if (!isThenable(value)) {
+                    value = this.resolve(value);
+                }
+                value.then(onResolve, onReject);
+            }
+            return promise;
+        };
+        ZoneAwarePromise.all = function (values) {
+            var resolve;
+            var reject;
+            var promise = new this(function (res, rej) {
+                resolve = res;
+                reject = rej;
+            });
+            var count = 0;
+            var resolvedValues = [];
+            for (var _i = 0, values_2 = values; _i < values_2.length; _i++) {
+                var value = values_2[_i];
+                if (!isThenable(value)) {
+                    value = this.resolve(value);
+                }
+                value.then((function (index) { return function (value) {
+                    resolvedValues[index] = value;
+                    count--;
+                    if (!count) {
+                        resolve(resolvedValues);
+                    }
+                }; })(count), reject);
+                count++;
+            }
+            if (!count)
+                resolve(resolvedValues);
+            return promise;
+        };
+        ZoneAwarePromise.prototype.then = function (onFulfilled, onRejected) {
+            var chainPromise = new this.constructor(null);
+            var zone = Zone.current;
+            if (this[symbolState] == UNRESOLVED) {
+                this[symbolValue].push(zone, chainPromise, onFulfilled, onRejected);
+            }
+            else {
+                scheduleResolveOrReject(this, zone, chainPromise, onFulfilled, onRejected);
+            }
+            return chainPromise;
+        };
+        ZoneAwarePromise.prototype.catch = function (onRejected) {
+            return this.then(null, onRejected);
+        };
+        return ZoneAwarePromise;
+    }());
+    // Protect against aggressive optimizers dropping seemingly unused properties.
+    // E.g. Closure Compiler in advanced mode.
+    ZoneAwarePromise['resolve'] = ZoneAwarePromise.resolve;
+    ZoneAwarePromise['reject'] = ZoneAwarePromise.reject;
+    ZoneAwarePromise['race'] = ZoneAwarePromise.race;
+    ZoneAwarePromise['all'] = ZoneAwarePromise.all;
+    var NativePromise = global[symbolPromise] = global['Promise'];
+    global['Promise'] = ZoneAwarePromise;
+    var symbolThenPatched = __symbol__('thenPatched');
+    function patchThen(Ctor) {
+        var proto = Ctor.prototype;
+        var originalThen = proto.then;
+        // Keep a reference to the original method.
+        proto[symbolThen] = originalThen;
+        // check Ctor.prototype.then propertyDescritor is writable or not
+        // in meteor env, writable is false, we have to make it to be true.
+        var prop = Object.getOwnPropertyDescriptor(Ctor.prototype, 'then');
+        if (prop && prop.writable === false && prop.configurable) {
+            Object.defineProperty(Ctor.prototype, 'then', { writable: true });
+        }
+        Ctor.prototype.then = function (onResolve, onReject) {
+            var _this = this;
+            var wrapped = new ZoneAwarePromise(function (resolve, reject) {
+                originalThen.call(_this, resolve, reject);
+            });
+            return wrapped.then(onResolve, onReject);
+        };
+        Ctor[symbolThenPatched] = true;
+    }
+    function zoneify(fn) {
+        return function () {
+            var resultPromise = fn.apply(this, arguments);
+            if (resultPromise instanceof ZoneAwarePromise) {
+                return resultPromise;
+            }
+            var ctor = resultPromise.constructor;
+            if (!ctor[symbolThenPatched]) {
+                patchThen(ctor);
+            }
+            return resultPromise;
+        };
+    }
+    if (NativePromise) {
+        patchThen(NativePromise);
+        var fetch_1 = global['fetch'];
+        if (typeof fetch_1 == 'function') {
+            global['fetch'] = zoneify(fetch_1);
+        }
+    }
+    // This is not part of public API, but it is useful for tests, so we expose it.
+    Promise[Zone.__symbol__('uncaughtPromiseErrors')] = _uncaughtPromiseErrors;
+    return ZoneAwarePromise;
+});
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * Suppress closure compiler errors about unknown 'Zone' variable
+ * @fileoverview
+ * @suppress {undefinedVars,globalThis}
+ */
+var zoneSymbol = Zone.__symbol__;
+var _global = typeof window === 'object' && window || typeof self === 'object' && self || global;
+function bindArguments(args, source) {
+    for (var i = args.length - 1; i >= 0; i--) {
+        if (typeof args[i] === 'function') {
+            args[i] = Zone.current.wrap(args[i], source + '_' + i);
+        }
+    }
+    return args;
+}
+function patchPrototype(prototype, fnNames) {
+    var source = prototype.constructor['name'];
+    var _loop_1 = function (i) {
+        var name_1 = fnNames[i];
+        var delegate = prototype[name_1];
+        if (delegate) {
+            prototype[name_1] = (function (delegate) {
+                var patched = function () {
+                    return delegate.apply(this, bindArguments(arguments, source + '.' + name_1));
+                };
+                attachOriginToPatched(patched, delegate);
+                return patched;
+            })(delegate);
+        }
+    };
+    for (var i = 0; i < fnNames.length; i++) {
+        _loop_1(i);
+    }
+}
+var isWebWorker = (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope);
+// Make sure to access `process` through `_global` so that WebPack does not accidently browserify
+// this code.
+var isNode = (!('nw' in _global) && typeof _global.process !== 'undefined' &&
+    {}.toString.call(_global.process) === '[object process]');
+var isBrowser = !isNode && !isWebWorker && !!(typeof window !== 'undefined' && window['HTMLElement']);
+// we are in electron of nw, so we are both browser and nodejs
+// Make sure to access `process` through `_global` so that WebPack does not accidently browserify
+// this code.
+var isMix = typeof _global.process !== 'undefined' &&
+    {}.toString.call(_global.process) === '[object process]' && !isWebWorker &&
+    !!(typeof window !== 'undefined' && window['HTMLElement']);
+function patchProperty(obj, prop, prototype) {
+    var desc = Object.getOwnPropertyDescriptor(obj, prop);
+    if (!desc && prototype) {
+        // when patch window object, use prototype to check prop exist or not
+        var prototypeDesc = Object.getOwnPropertyDescriptor(prototype, prop);
+        if (prototypeDesc) {
+            desc = { enumerable: true, configurable: true };
+        }
+    }
+    // if the descriptor not exists or is not configurable
+    // just return
+    if (!desc || !desc.configurable) {
+        return;
+    }
+    // A property descriptor cannot have getter/setter and be writable
+    // deleting the writable and value properties avoids this error:
+    //
+    // TypeError: property descriptors must not specify a value or be writable when a
+    // getter or setter has been specified
+    delete desc.writable;
+    delete desc.value;
+    var originalDescGet = desc.get;
+    // substr(2) cuz 'onclick' -> 'click', etc
+    var eventName = prop.substr(2);
+    var _prop = zoneSymbol('_' + prop);
+    desc.set = function (newValue) {
+        // in some of windows's onproperty callback, this is undefined
+        // so we need to check it
+        var target = this;
+        if (!target && obj === _global) {
+            target = _global;
+        }
+        if (!target) {
+            return;
+        }
+        var previousValue = target[_prop];
+        if (previousValue) {
+            target.removeEventListener(eventName, previousValue);
+        }
+        if (typeof newValue === 'function') {
+            var wrapFn = function (event) {
+                var result = newValue.apply(this, arguments);
+                if (result != undefined && !result) {
+                    event.preventDefault();
+                }
+                return result;
+            };
+            target[_prop] = wrapFn;
+            target.addEventListener(eventName, wrapFn, false);
+        }
+        else {
+            target[_prop] = null;
+        }
+    };
+    // The getter would return undefined for unassigned properties but the default value of an
+    // unassigned property is null
+    desc.get = function () {
+        // in some of windows's onproperty callback, this is undefined
+        // so we need to check it
+        var target = this;
+        if (!target && obj === _global) {
+            target = _global;
+        }
+        if (!target) {
+            return null;
+        }
+        if (target.hasOwnProperty(_prop)) {
+            return target[_prop];
+        }
+        else if (originalDescGet) {
+            // result will be null when use inline event attribute,
+            // such as <button onclick="func();">OK</button>
+            // because the onclick function is internal raw uncompiled handler
+            // the onclick will be evaluated when first time event was triggered or
+            // the property is accessed, https://github.com/angular/zone.js/issues/525
+            // so we should use original native get to retrieve the handler
+            var value = originalDescGet && originalDescGet.apply(this);
+            if (value) {
+                desc.set.apply(this, [value]);
+                if (typeof target['removeAttribute'] === 'function') {
+                    target.removeAttribute(prop);
+                }
+                return value;
+            }
+        }
+        return null;
+    };
+    Object.defineProperty(obj, prop, desc);
+}
+function patchOnProperties(obj, properties, prototype) {
+    if (properties) {
+        for (var i = 0; i < properties.length; i++) {
+            patchProperty(obj, 'on' + properties[i], prototype);
+        }
+    }
+    else {
+        var onProperties = [];
+        for (var prop in obj) {
+            if (prop.substr(0, 2) == 'on') {
+                onProperties.push(prop);
+            }
+        }
+        for (var j = 0; j < onProperties.length; j++) {
+            patchProperty(obj, onProperties[j], prototype);
+        }
+    }
+}
+var originalInstanceKey = zoneSymbol('originalInstance');
+// wrap some native API on `window`
+function patchClass(className) {
+    var OriginalClass = _global[className];
+    if (!OriginalClass)
+        return;
+    // keep original class in global
+    _global[zoneSymbol(className)] = OriginalClass;
+    _global[className] = function () {
+        var a = bindArguments(arguments, className);
+        switch (a.length) {
+            case 0:
+                this[originalInstanceKey] = new OriginalClass();
+                break;
+            case 1:
+                this[originalInstanceKey] = new OriginalClass(a[0]);
+                break;
+            case 2:
+                this[originalInstanceKey] = new OriginalClass(a[0], a[1]);
+                break;
+            case 3:
+                this[originalInstanceKey] = new OriginalClass(a[0], a[1], a[2]);
+                break;
+            case 4:
+                this[originalInstanceKey] = new OriginalClass(a[0], a[1], a[2], a[3]);
+                break;
+            default:
+                throw new Error('Arg list too long.');
+        }
+    };
+    // attach original delegate to patched function
+    attachOriginToPatched(_global[className], OriginalClass);
+    var instance = new OriginalClass(function () { });
+    var prop;
+    for (prop in instance) {
+        // https://bugs.webkit.org/show_bug.cgi?id=44721
+        if (className === 'XMLHttpRequest' && prop === 'responseBlob')
+            continue;
+        (function (prop) {
+            if (typeof instance[prop] === 'function') {
+                _global[className].prototype[prop] = function () {
+                    return this[originalInstanceKey][prop].apply(this[originalInstanceKey], arguments);
+                };
+            }
+            else {
+                Object.defineProperty(_global[className].prototype, prop, {
+                    set: function (fn) {
+                        if (typeof fn === 'function') {
+                            this[originalInstanceKey][prop] = Zone.current.wrap(fn, className + '.' + prop);
+                            // keep callback in wrapped function so we can
+                            // use it in Function.prototype.toString to return
+                            // the native one.
+                            attachOriginToPatched(this[originalInstanceKey][prop], fn);
+                        }
+                        else {
+                            this[originalInstanceKey][prop] = fn;
+                        }
+                    },
+                    get: function () {
+                        return this[originalInstanceKey][prop];
+                    }
+                });
+            }
+        }(prop));
+    }
+    for (prop in OriginalClass) {
+        if (prop !== 'prototype' && OriginalClass.hasOwnProperty(prop)) {
+            _global[className][prop] = OriginalClass[prop];
+        }
+    }
+}
+function patchMethod(target, name, patchFn) {
+    var proto = target;
+    while (proto && !proto.hasOwnProperty(name)) {
+        proto = Object.getPrototypeOf(proto);
+    }
+    if (!proto && target[name]) {
+        // somehow we did not find it, but we can see it. This happens on IE for Window properties.
+        proto = target;
+    }
+    var delegateName = zoneSymbol(name);
+    var delegate;
+    if (proto && !(delegate = proto[delegateName])) {
+        delegate = proto[delegateName] = proto[name];
+        var patchDelegate_1 = patchFn(delegate, delegateName, name);
+        proto[name] = function () {
+            return patchDelegate_1(this, arguments);
+        };
+        attachOriginToPatched(proto[name], delegate);
+    }
+    return delegate;
+}
+// TODO: @JiaLiPassion, support cancel task later if necessary
+function patchMacroTask(obj, funcName, metaCreator) {
+    var setNative = null;
+    function scheduleTask(task) {
+        var data = task.data;
+        data.args[data.callbackIndex] = function () {
+            task.invoke.apply(this, arguments);
+        };
+        setNative.apply(data.target, data.args);
+        return task;
+    }
+    setNative = patchMethod(obj, funcName, function (delegate) { return function (self, args) {
+        var meta = metaCreator(self, args);
+        if (meta.callbackIndex >= 0 && typeof args[meta.callbackIndex] === 'function') {
+            var task = Zone.current.scheduleMacroTask(meta.name, args[meta.callbackIndex], meta, scheduleTask, null);
+            return task;
+        }
+        else {
+            // cause an error by calling it directly.
+            return delegate.apply(self, args);
+        }
+    }; });
+}
+
+function attachOriginToPatched(patched, original) {
+    patched[zoneSymbol('OriginalDelegate')] = original;
+}
+var isDetectedIEOrEdge = false;
+var ieOrEdge = false;
+function isIEOrEdge() {
+    if (isDetectedIEOrEdge) {
+        return ieOrEdge;
+    }
+    isDetectedIEOrEdge = true;
+    try {
+        var ua = window.navigator.userAgent;
+        var msie = ua.indexOf('MSIE ');
+        if (ua.indexOf('MSIE ') !== -1 || ua.indexOf('Trident/') !== -1 || ua.indexOf('Edge/') !== -1) {
+            ieOrEdge = true;
+        }
+        return ieOrEdge;
+    }
+    catch (error) {
+    }
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+// override Function.prototype.toString to make zone.js patched function
+// look like native function
+Zone.__load_patch('toString', function (global, Zone, api) {
+    // patch Func.prototype.toString to let them look like native
+    var originalFunctionToString = Zone['__zone_symbol__originalToString'] =
+        Function.prototype.toString;
+    Function.prototype.toString = function () {
+        if (typeof this === 'function') {
+            var originalDelegate = this[zoneSymbol('OriginalDelegate')];
+            if (originalDelegate) {
+                if (typeof originalDelegate === 'function') {
+                    return originalFunctionToString.apply(this[zoneSymbol('OriginalDelegate')], arguments);
+                }
+                else {
+                    return Object.prototype.toString.call(originalDelegate);
+                }
+            }
+            if (this === Promise) {
+                var nativePromise = global[zoneSymbol('Promise')];
+                if (nativePromise) {
+                    return originalFunctionToString.apply(nativePromise, arguments);
+                }
+            }
+            if (this === Error) {
+                var nativeError = global[zoneSymbol('Error')];
+                if (nativeError) {
+                    return originalFunctionToString.apply(nativeError, arguments);
+                }
+            }
+        }
+        return originalFunctionToString.apply(this, arguments);
+    };
+    // patch Object.prototype.toString to let them look like native
+    var originalObjectToString = Object.prototype.toString;
+    Object.prototype.toString = function () {
+        if (this instanceof Promise) {
+            return '[object Promise]';
+        }
+        return originalObjectToString.apply(this, arguments);
+    };
+});
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var TRUE_STR = 'true';
+var FALSE_STR = 'false';
+// an identifier to tell ZoneTask do not create a new invoke closure
+var OPTIMIZED_ZONE_EVENT_TASK_DATA = {
+    isUsingGlobalCallback: true
+};
+var zoneSymbolEventNames = {};
+var globalSources = {};
+var CONSTRUCTOR_NAME = 'name';
+var FUNCTION_TYPE = 'function';
+var OBJECT_TYPE = 'object';
+var ZONE_SYMBOL_PREFIX = '__zone_symbol__';
+var EVENT_NAME_SYMBOL_REGX = /^__zone_symbol__(\w+)(true|false)$/;
+function patchEventTarget(_global, apis, patchOptions) {
+    var ADD_EVENT_LISTENER = (patchOptions && patchOptions.addEventListenerFnName) || 'addEventListener';
+    var REMOVE_EVENT_LISTENER = (patchOptions && patchOptions.removeEventListenerFnName) || 'removeEventListener';
+    var LISTENERS_EVENT_LISTENER = (patchOptions && patchOptions.listenersFnName) || 'eventListeners';
+    var REMOVE_ALL_LISTENERS_EVENT_LISTENER = (patchOptions && patchOptions.removeAllFnName) || 'removeAllListeners';
+    var zoneSymbolAddEventListener = zoneSymbol(ADD_EVENT_LISTENER);
+    var ADD_EVENT_LISTENER_SOURCE = '.' + ADD_EVENT_LISTENER + ':';
+    var PREPEND_EVENT_LISTENER = 'prependListener';
+    var PREPEND_EVENT_LISTENER_SOURCE = '.' + PREPEND_EVENT_LISTENER + ':';
+    var invokeTask = function (task, target, event) {
+        // for better performance, check isRemoved which is set
+        // by removeEventListener
+        if (task.isRemoved) {
+            return;
+        }
+        var delegate = task.callback;
+        if (typeof delegate === OBJECT_TYPE && delegate.handleEvent) {
+            // create the bind version of handleEvent when invoke
+            task.callback = function (event) { return delegate.handleEvent(event); };
+            task.originalDelegate = delegate;
+        }
+        // invoke static task.invoke
+        task.invoke(task, target, [event]);
+        var options = task.options;
+        if (options && typeof options === 'object' && options.once) {
+            // if options.once is true, after invoke once remove listener here
+            // only browser need to do this, nodejs eventEmitter will cal removeListener
+            // inside EventEmitter.once
+            var delegate_1 = task.originalDelegate ? task.originalDelegate : task.callback;
+            target[REMOVE_EVENT_LISTENER].apply(target, [event.type, delegate_1, options]);
+        }
+    };
+    // global shared zoneAwareCallback to handle all event callback with capture = false
+    var globalZoneAwareCallback = function (event) {
+        var target = this || _global;
+        var tasks = target[zoneSymbolEventNames[event.type][FALSE_STR]];
+        if (tasks) {
+            // invoke all tasks which attached to current target with given event.type and capture = false
+            // for performance concern, if task.length === 1, just invoke
+            if (tasks.length === 1) {
+                invokeTask(tasks[0], target, event);
+            }
+            else {
+                // https://github.com/angular/zone.js/issues/836
+                // copy the tasks array before invoke, to avoid
+                // the callback will remove itself or other listener
+                var copyTasks = tasks.slice();
+                for (var i = 0; i < copyTasks.length; i++) {
+                    invokeTask(copyTasks[i], target, event);
+                }
+            }
+        }
+    };
+    // global shared zoneAwareCallback to handle all event callback with capture = true
+    var globalZoneAwareCaptureCallback = function (event) {
+        var target = this || _global;
+        var tasks = target[zoneSymbolEventNames[event.type][TRUE_STR]];
+        if (tasks) {
+            // invoke all tasks which attached to current target with given event.type and capture = false
+            // for performance concern, if task.length === 1, just invoke
+            if (tasks.length === 1) {
+                invokeTask(tasks[0], target, event);
+            }
+            else {
+                // https://github.com/angular/zone.js/issues/836
+                // copy the tasks array before invoke, to avoid
+                // the callback will remove itself or other listener
+                var copyTasks = tasks.slice();
+                for (var i = 0; i < copyTasks.length; i++) {
+                    invokeTask(copyTasks[i], target, event);
+                }
+            }
+        }
+    };
+    function patchEventTargetMethods(obj, patchOptions) {
+        if (!obj) {
+            return false;
+        }
+        var useGlobalCallback = true;
+        if (patchOptions && patchOptions.useGlobalCallback !== undefined) {
+            useGlobalCallback = patchOptions.useGlobalCallback;
+        }
+        var validateHandler = patchOptions && patchOptions.validateHandler;
+        var checkDuplicate = true;
+        if (patchOptions && patchOptions.checkDuplicate !== undefined) {
+            checkDuplicate = patchOptions.checkDuplicate;
+        }
+        var returnTarget = false;
+        if (patchOptions && patchOptions.returnTarget !== undefined) {
+            returnTarget = patchOptions.returnTarget;
+        }
+        var proto = obj;
+        while (proto && !proto.hasOwnProperty(ADD_EVENT_LISTENER)) {
+            proto = Object.getPrototypeOf(proto);
+        }
+        if (!proto && obj[ADD_EVENT_LISTENER]) {
+            // somehow we did not find it, but we can see it. This happens on IE for Window properties.
+            proto = obj;
+        }
+        if (!proto) {
+            return false;
+        }
+        if (proto[zoneSymbolAddEventListener]) {
+            return false;
+        }
+        // a shared global taskData to pass data for scheduleEventTask
+        // so we do not need to create a new object just for pass some data
+        var taskData = {};
+        var nativeAddEventListener = proto[zoneSymbolAddEventListener] = proto[ADD_EVENT_LISTENER];
+        var nativeRemoveEventListener = proto[zoneSymbol(REMOVE_EVENT_LISTENER)] =
+            proto[REMOVE_EVENT_LISTENER];
+        var nativeListeners = proto[zoneSymbol(LISTENERS_EVENT_LISTENER)] =
+            proto[LISTENERS_EVENT_LISTENER];
+        var nativeRemoveAllListeners = proto[zoneSymbol(REMOVE_ALL_LISTENERS_EVENT_LISTENER)] =
+            proto[REMOVE_ALL_LISTENERS_EVENT_LISTENER];
+        var nativePrependEventListener;
+        if (patchOptions && patchOptions.prependEventListenerFnName) {
+            nativePrependEventListener = proto[zoneSymbol(patchOptions.prependEventListenerFnName)] =
+                proto[patchOptions.prependEventListenerFnName];
+        }
+        var customScheduleGlobal = function (task) {
+            // if there is already a task for the eventName + capture,
+            // just return, because we use the shared globalZoneAwareCallback here.
+            if (taskData.isExisting) {
+                return;
+            }
+            return nativeAddEventListener.apply(taskData.target, [
+                taskData.eventName,
+                taskData.capture ? globalZoneAwareCaptureCallback : globalZoneAwareCallback,
+                taskData.options
+            ]);
+        };
+        var customCancelGlobal = function (task) {
+            // if task is not marked as isRemoved, this call is directly
+            // from Zone.prototype.cancelTask, we should remove the task
+            // from tasksList of target first
+            if (!task.isRemoved) {
+                var symbolEventNames = zoneSymbolEventNames[task.eventName];
+                var symbolEventName = void 0;
+                if (symbolEventNames) {
+                    symbolEventName = symbolEventNames[task.capture ? TRUE_STR : FALSE_STR];
+                }
+                var existingTasks = symbolEventName && task.target[symbolEventName];
+                if (existingTasks) {
+                    for (var i = 0; i < existingTasks.length; i++) {
+                        var existingTask = existingTasks[i];
+                        if (existingTask === task) {
+                            existingTasks.splice(i, 1);
+                            // set isRemoved to data for faster invokeTask check
+                            task.isRemoved = true;
+                            if (existingTasks.length === 0) {
+                                // all tasks for the eventName + capture have gone,
+                                // remove globalZoneAwareCallback and remove the task cache from target
+                                task.allRemoved = true;
+                                task.target[symbolEventName] = null;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            // if all tasks for the eventName + capture have gone,
+            // we will really remove the global event callback,
+            // if not, return
+            if (!task.allRemoved) {
+                return;
+            }
+            return nativeRemoveEventListener.apply(task.target, [
+                task.eventName, task.capture ? globalZoneAwareCaptureCallback : globalZoneAwareCallback,
+                task.options
+            ]);
+        };
+        var customScheduleNonGlobal = function (task) {
+            return nativeAddEventListener.apply(taskData.target, [taskData.eventName, task.invoke, taskData.options]);
+        };
+        var customSchedulePrepend = function (task) {
+            return nativePrependEventListener.apply(taskData.target, [taskData.eventName, task.invoke, taskData.options]);
+        };
+        var customCancelNonGlobal = function (task) {
+            return nativeRemoveEventListener.apply(task.target, [task.eventName, task.invoke, task.options]);
+        };
+        var customSchedule = useGlobalCallback ? customScheduleGlobal : customScheduleNonGlobal;
+        var customCancel = useGlobalCallback ? customCancelGlobal : customCancelNonGlobal;
+        var compareTaskCallbackVsDelegate = function (task, delegate) {
+            var typeOfDelegate = typeof delegate;
+            if ((typeOfDelegate === FUNCTION_TYPE && task.callback === delegate) ||
+                (typeOfDelegate === OBJECT_TYPE && task.originalDelegate === delegate)) {
+                // same callback, same capture, same event name, just return
+                return true;
+            }
+            return false;
+        };
+        var compare = (patchOptions && patchOptions.compareTaskCallbackVsDelegate) ?
+            patchOptions.compareTaskCallbackVsDelegate :
+            compareTaskCallbackVsDelegate;
+        var makeAddListener = function (nativeListener, addSource, customScheduleFn, customCancelFn, returnTarget, prepend) {
+            if (returnTarget === void 0) { returnTarget = false; }
+            if (prepend === void 0) { prepend = false; }
+            return function () {
+                var target = this || _global;
+                var targetZone = Zone.current;
+                var delegate = arguments[1];
+                if (!delegate) {
+                    return nativeListener.apply(this, arguments);
+                }
+                // don't create the bind delegate function for handleEvent
+                // case here to improve addEventListener performance
+                // we will create the bind delegate when invoke
+                var isHandleEvent = false;
+                if (typeof delegate !== FUNCTION_TYPE) {
+                    if (!delegate.handleEvent) {
+                        return nativeListener.apply(this, arguments);
+                    }
+                    isHandleEvent = true;
+                }
+                if (validateHandler && !validateHandler(nativeListener, delegate, target, arguments)) {
+                    return;
+                }
+                var eventName = arguments[0];
+                var options = arguments[2];
+                var capture;
+                var once = false;
+                if (options === undefined) {
+                    capture = false;
+                }
+                else if (options === true) {
+                    capture = true;
+                }
+                else if (options === false) {
+                    capture = false;
+                }
+                else {
+                    capture = options ? !!options.capture : false;
+                    once = options ? !!options.once : false;
+                }
+                var zone = Zone.current;
+                var symbolEventNames = zoneSymbolEventNames[eventName];
+                var symbolEventName;
+                if (!symbolEventNames) {
+                    // the code is duplicate, but I just want to get some better performance
+                    var falseEventName = eventName + FALSE_STR;
+                    var trueEventName = eventName + TRUE_STR;
+                    var symbol = ZONE_SYMBOL_PREFIX + falseEventName;
+                    var symbolCapture = ZONE_SYMBOL_PREFIX + trueEventName;
+                    zoneSymbolEventNames[eventName] = {};
+                    zoneSymbolEventNames[eventName][FALSE_STR] = symbol;
+                    zoneSymbolEventNames[eventName][TRUE_STR] = symbolCapture;
+                    symbolEventName = capture ? symbolCapture : symbol;
+                }
+                else {
+                    symbolEventName = symbolEventNames[capture ? TRUE_STR : FALSE_STR];
+                }
+                var existingTasks = target[symbolEventName];
+                var isExisting = false;
+                if (existingTasks) {
+                    // already have task registered
+                    isExisting = true;
+                    if (checkDuplicate) {
+                        for (var i = 0; i < existingTasks.length; i++) {
+                            if (compare(existingTasks[i], delegate)) {
+                                // same callback, same capture, same event name, just return
+                                return;
+                            }
+                        }
+                    }
+                }
+                else {
+                    existingTasks = target[symbolEventName] = [];
+                }
+                var source;
+                var constructorName = target.constructor[CONSTRUCTOR_NAME];
+                var targetSource = globalSources[constructorName];
+                if (targetSource) {
+                    source = targetSource[eventName];
+                }
+                if (!source) {
+                    source = constructorName + addSource + eventName;
+                }
+                // do not create a new object as task.data to pass those things
+                // just use the global shared one
+                taskData.options = options;
+                if (once) {
+                    // if addEventListener with once options, we don't pass it to
+                    // native addEventListener, instead we keep the once setting
+                    // and handle ourselves.
+                    taskData.options.once = false;
+                }
+                taskData.target = target;
+                taskData.capture = capture;
+                taskData.eventName = eventName;
+                taskData.isExisting = isExisting;
+                var data = useGlobalCallback ? OPTIMIZED_ZONE_EVENT_TASK_DATA : null;
+                var task = zone.scheduleEventTask(source, delegate, data, customScheduleFn, customCancelFn);
+                // have to save those information to task in case
+                // application may call task.zone.cancelTask() directly
+                if (once) {
+                    options.once = true;
+                }
+                task.options = options;
+                task.target = target;
+                task.capture = capture;
+                task.eventName = eventName;
+                if (isHandleEvent) {
+                    // save original delegate for compare to check duplicate
+                    task.originalDelegate = delegate;
+                }
+                if (!prepend) {
+                    existingTasks.push(task);
+                }
+                else {
+                    existingTasks.unshift(task);
+                }
+                if (returnTarget) {
+                    return target;
+                }
+            };
+        };
+        proto[ADD_EVENT_LISTENER] = makeAddListener(nativeAddEventListener, ADD_EVENT_LISTENER_SOURCE, customSchedule, customCancel, returnTarget);
+        if (nativePrependEventListener) {
+            proto[PREPEND_EVENT_LISTENER] = makeAddListener(nativePrependEventListener, PREPEND_EVENT_LISTENER_SOURCE, customSchedulePrepend, customCancel, returnTarget, true);
+        }
+        proto[REMOVE_EVENT_LISTENER] = function () {
+            var target = this || _global;
+            var eventName = arguments[0];
+            var options = arguments[2];
+            var capture;
+            if (options === undefined) {
+                capture = false;
+            }
+            else if (options === true) {
+                capture = true;
+            }
+            else if (options === false) {
+                capture = false;
+            }
+            else {
+                capture = options ? !!options.capture : false;
+            }
+            var delegate = arguments[1];
+            if (!delegate) {
+                return nativeRemoveEventListener.apply(this, arguments);
+            }
+            if (validateHandler &&
+                !validateHandler(nativeRemoveEventListener, delegate, target, arguments)) {
+                return;
+            }
+            var symbolEventNames = zoneSymbolEventNames[eventName];
+            var symbolEventName;
+            if (symbolEventNames) {
+                symbolEventName = symbolEventNames[capture ? TRUE_STR : FALSE_STR];
+            }
+            var existingTasks = symbolEventName && target[symbolEventName];
+            if (existingTasks) {
+                for (var i = 0; i < existingTasks.length; i++) {
+                    var existingTask = existingTasks[i];
+                    var typeOfDelegate = typeof delegate;
+                    if (compare(existingTask, delegate)) {
+                        existingTasks.splice(i, 1);
+                        // set isRemoved to data for faster invokeTask check
+                        existingTask.isRemoved = true;
+                        if (existingTasks.length === 0) {
+                            // all tasks for the eventName + capture have gone,
+                            // remove globalZoneAwareCallback and remove the task cache from target
+                            existingTask.allRemoved = true;
+                            target[symbolEventName] = null;
+                        }
+                        existingTask.zone.cancelTask(existingTask);
+                        return;
+                    }
+                }
+            }
+        };
+        proto[LISTENERS_EVENT_LISTENER] = function () {
+            var target = this || _global;
+            var eventName = arguments[0];
+            var listeners = [];
+            var tasks = findEventTasks(target, eventName);
+            for (var i = 0; i < tasks.length; i++) {
+                var task = tasks[i];
+                var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
+                listeners.push(delegate);
+            }
+            return listeners;
+        };
+        proto[REMOVE_ALL_LISTENERS_EVENT_LISTENER] = function () {
+            var target = this || _global;
+            var eventName = arguments[0];
+            if (!eventName) {
+                var keys = Object.keys(target);
+                for (var i = 0; i < keys.length; i++) {
+                    var prop = keys[i];
+                    var match = EVENT_NAME_SYMBOL_REGX.exec(prop);
+                    var evtName = match && match[1];
+                    // in nodejs EventEmitter, removeListener event is
+                    // used for monitoring the removeListener call,
+                    // so just keep removeListener eventListener until
+                    // all other eventListeners are removed
+                    if (evtName && evtName !== 'removeListener') {
+                        this[REMOVE_ALL_LISTENERS_EVENT_LISTENER].apply(this, [evtName]);
+                    }
+                }
+                // remove removeListener listener finally
+                this[REMOVE_ALL_LISTENERS_EVENT_LISTENER].apply(this, ['removeListener']);
+            }
+            else {
+                var symbolEventNames = zoneSymbolEventNames[eventName];
+                if (symbolEventNames) {
+                    var symbolEventName = symbolEventNames[FALSE_STR];
+                    var symbolCaptureEventName = symbolEventNames[TRUE_STR];
+                    var tasks = target[symbolEventName];
+                    var captureTasks = target[symbolCaptureEventName];
+                    if (tasks) {
+                        var removeTasks = tasks.slice();
+                        for (var i = 0; i < removeTasks.length; i++) {
+                            var task = removeTasks[i];
+                            var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
+                            this[REMOVE_EVENT_LISTENER].apply(this, [eventName, delegate, task.options]);
+                        }
+                    }
+                    if (captureTasks) {
+                        var removeTasks = captureTasks.slice();
+                        for (var i = 0; i < removeTasks.length; i++) {
+                            var task = removeTasks[i];
+                            var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
+                            this[REMOVE_EVENT_LISTENER].apply(this, [eventName, delegate, task.options]);
+                        }
+                    }
+                }
+            }
+        };
+        // for native toString patch
+        attachOriginToPatched(proto[ADD_EVENT_LISTENER], nativeAddEventListener);
+        attachOriginToPatched(proto[REMOVE_EVENT_LISTENER], nativeRemoveEventListener);
+        if (nativeRemoveAllListeners) {
+            attachOriginToPatched(proto[REMOVE_ALL_LISTENERS_EVENT_LISTENER], nativeRemoveAllListeners);
+        }
+        if (nativeListeners) {
+            attachOriginToPatched(proto[LISTENERS_EVENT_LISTENER], nativeListeners);
+        }
+        return true;
+    }
+    var results = [];
+    for (var i = 0; i < apis.length; i++) {
+        results[i] = patchEventTargetMethods(apis[i], patchOptions);
+    }
+    return results;
+}
+function findEventTasks(target, eventName) {
+    var foundTasks = [];
+    for (var prop in target) {
+        var match = EVENT_NAME_SYMBOL_REGX.exec(prop);
+        var evtName = match && match[1];
+        if (evtName && (!eventName || evtName === eventName)) {
+            var tasks = target[prop];
+            if (tasks) {
+                for (var i = 0; i < tasks.length; i++) {
+                    foundTasks.push(tasks[i]);
+                }
+            }
+        }
+    }
+    return foundTasks;
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+function patchTimer(window, setName, cancelName, nameSuffix) {
+    var setNative = null;
+    var clearNative = null;
+    setName += nameSuffix;
+    cancelName += nameSuffix;
+    var tasksByHandleId = {};
+    function scheduleTask(task) {
+        var data = task.data;
+        function timer() {
+            try {
+                task.invoke.apply(this, arguments);
+            }
+            finally {
+                if (typeof data.handleId === 'number') {
+                    // Node returns complex objects as handleIds
+                    delete tasksByHandleId[data.handleId];
+                }
+            }
+        }
+        data.args[0] = timer;
+        data.handleId = setNative.apply(window, data.args);
+        if (typeof data.handleId === 'number') {
+            // Node returns complex objects as handleIds -> no need to keep them around. Additionally,
+            // this throws an
+            // exception in older node versions and has no effect there, because of the stringified key.
+            tasksByHandleId[data.handleId] = task;
+        }
+        return task;
+    }
+    function clearTask(task) {
+        if (typeof task.data.handleId === 'number') {
+            // Node returns complex objects as handleIds
+            delete tasksByHandleId[task.data.handleId];
+        }
+        return clearNative(task.data.handleId);
+    }
+    setNative =
+        patchMethod(window, setName, function (delegate) { return function (self, args) {
+            if (typeof args[0] === 'function') {
+                var zone = Zone.current;
+                var options = {
+                    handleId: null,
+                    isPeriodic: nameSuffix === 'Interval',
+                    delay: (nameSuffix === 'Timeout' || nameSuffix === 'Interval') ? args[1] || 0 : null,
+                    args: args
+                };
+                var task = zone.scheduleMacroTask(setName, args[0], options, scheduleTask, clearTask);
+                if (!task) {
+                    return task;
+                }
+                // Node.js must additionally support the ref and unref functions.
+                var handle = task.data.handleId;
+                // check whether handle is null, because some polyfill or browser
+                // may return undefined from setTimeout/setInterval/setImmediate/requestAnimationFrame
+                if (handle && handle.ref && handle.unref && typeof handle.ref === 'function' &&
+                    typeof handle.unref === 'function') {
+                    task.ref = handle.ref.bind(handle);
+                    task.unref = handle.unref.bind(handle);
+                }
+                return task;
+            }
+            else {
+                // cause an error by calling it directly.
+                return delegate.apply(window, args);
+            }
+        }; });
+    clearNative =
+        patchMethod(window, cancelName, function (delegate) { return function (self, args) {
+            var task = typeof args[0] === 'number' ? tasksByHandleId[args[0]] : args[0];
+            if (task && typeof task.type === 'string') {
+                if (task.state !== 'notScheduled' &&
+                    (task.cancelFn && task.data.isPeriodic || task.runCount === 0)) {
+                    // Do not cancel already canceled functions
+                    task.zone.cancelTask(task);
+                }
+            }
+            else {
+                // cause an error by calling it directly.
+                delegate.apply(window, args);
+            }
+        }; });
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/*
+ * This is necessary for Chrome and Chrome mobile, to enable
+ * things like redefining `createdCallback` on an element.
+ */
+var _defineProperty = Object[zoneSymbol('defineProperty')] = Object.defineProperty;
+var _getOwnPropertyDescriptor = Object[zoneSymbol('getOwnPropertyDescriptor')] =
+    Object.getOwnPropertyDescriptor;
+var _create = Object.create;
+var unconfigurablesKey = zoneSymbol('unconfigurables');
+function propertyPatch() {
+    Object.defineProperty = function (obj, prop, desc) {
+        if (isUnconfigurable(obj, prop)) {
+            throw new TypeError('Cannot assign to read only property \'' + prop + '\' of ' + obj);
+        }
+        var originalConfigurableFlag = desc.configurable;
+        if (prop !== 'prototype') {
+            desc = rewriteDescriptor(obj, prop, desc);
+        }
+        return _tryDefineProperty(obj, prop, desc, originalConfigurableFlag);
+    };
+    Object.defineProperties = function (obj, props) {
+        Object.keys(props).forEach(function (prop) {
+            Object.defineProperty(obj, prop, props[prop]);
+        });
+        return obj;
+    };
+    Object.create = function (obj, proto) {
+        if (typeof proto === 'object' && !Object.isFrozen(proto)) {
+            Object.keys(proto).forEach(function (prop) {
+                proto[prop] = rewriteDescriptor(obj, prop, proto[prop]);
+            });
+        }
+        return _create(obj, proto);
+    };
+    Object.getOwnPropertyDescriptor = function (obj, prop) {
+        var desc = _getOwnPropertyDescriptor(obj, prop);
+        if (isUnconfigurable(obj, prop)) {
+            desc.configurable = false;
+        }
+        return desc;
+    };
+}
+function _redefineProperty(obj, prop, desc) {
+    var originalConfigurableFlag = desc.configurable;
+    desc = rewriteDescriptor(obj, prop, desc);
+    return _tryDefineProperty(obj, prop, desc, originalConfigurableFlag);
+}
+function isUnconfigurable(obj, prop) {
+    return obj && obj[unconfigurablesKey] && obj[unconfigurablesKey][prop];
+}
+function rewriteDescriptor(obj, prop, desc) {
+    desc.configurable = true;
+    if (!desc.configurable) {
+        if (!obj[unconfigurablesKey]) {
+            _defineProperty(obj, unconfigurablesKey, { writable: true, value: {} });
+        }
+        obj[unconfigurablesKey][prop] = true;
+    }
+    return desc;
+}
+function _tryDefineProperty(obj, prop, desc, originalConfigurableFlag) {
+    try {
+        return _defineProperty(obj, prop, desc);
+    }
+    catch (error) {
+        if (desc.configurable) {
+            // In case of errors, when the configurable flag was likely set by rewriteDescriptor(), let's
+            // retry with the original flag value
+            if (typeof originalConfigurableFlag == 'undefined') {
+                delete desc.configurable;
+            }
+            else {
+                desc.configurable = originalConfigurableFlag;
+            }
+            try {
+                return _defineProperty(obj, prop, desc);
+            }
+            catch (error) {
+                var descJson = null;
+                try {
+                    descJson = JSON.stringify(desc);
+                }
+                catch (error) {
+                    descJson = descJson.toString();
+                }
+                console.log("Attempting to configure '" + prop + "' with descriptor '" + descJson + "' on object '" + obj + "' and got error, giving up: " + error);
+            }
+        }
+        else {
+            throw error;
+        }
+    }
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+// we have to patch the instance since the proto is non-configurable
+function apply(api, _global) {
+    var WS = _global.WebSocket;
+    // On Safari window.EventTarget doesn't exist so need to patch WS add/removeEventListener
+    // On older Chrome, no need since EventTarget was already patched
+    if (!_global.EventTarget) {
+        patchEventTarget(api, _global, [WS.prototype]);
+    }
+    _global.WebSocket = function (a, b) {
+        var socket = arguments.length > 1 ? new WS(a, b) : new WS(a);
+        var proxySocket;
+        var proxySocketProto;
+        // Safari 7.0 has non-configurable own 'onmessage' and friends properties on the socket instance
+        var onmessageDesc = Object.getOwnPropertyDescriptor(socket, 'onmessage');
+        if (onmessageDesc && onmessageDesc.configurable === false) {
+            proxySocket = Object.create(socket);
+            // socket have own property descriptor 'onopen', 'onmessage', 'onclose', 'onerror'
+            // but proxySocket not, so we will keep socket as prototype and pass it to
+            // patchOnProperties method
+            proxySocketProto = socket;
+            ['addEventListener', 'removeEventListener', 'send', 'close'].forEach(function (propName) {
+                proxySocket[propName] = function () {
+                    return socket[propName].apply(socket, arguments);
+                };
+            });
+        }
+        else {
+            // we can patch the real socket
+            proxySocket = socket;
+        }
+        patchOnProperties(proxySocket, ['close', 'error', 'message', 'open'], proxySocketProto);
+        return proxySocket;
+    };
+    for (var prop in WS) {
+        _global['WebSocket'][prop] = WS[prop];
+    }
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var globalEventHandlersEventNames = [
+    'abort',
+    'animationcancel',
+    'animationend',
+    'animationiteration',
+    'auxclick',
+    'beforeinput',
+    'blur',
+    'cancel',
+    'canplay',
+    'canplaythrough',
+    'change',
+    'compositionstart',
+    'compositionupdate',
+    'compositionend',
+    'cuechange',
+    'click',
+    'close',
+    'contextmenu',
+    'curechange',
+    'dblclick',
+    'drag',
+    'dragend',
+    'dragenter',
+    'dragexit',
+    'dragleave',
+    'dragover',
+    'drop',
+    'durationchange',
+    'emptied',
+    'ended',
+    'error',
+    'focus',
+    'focusin',
+    'focusout',
+    'gotpointercapture',
+    'input',
+    'invalid',
+    'keydown',
+    'keypress',
+    'keyup',
+    'load',
+    'loadstart',
+    'loadeddata',
+    'loadedmetadata',
+    'lostpointercapture',
+    'mousedown',
+    'mouseenter',
+    'mouseleave',
+    'mousemove',
+    'mouseout',
+    'mouseover',
+    'mouseup',
+    'mousewheel',
+    'pause',
+    'play',
+    'playing',
+    'pointercancel',
+    'pointerdown',
+    'pointerenter',
+    'pointerleave',
+    'pointerlockchange',
+    'mozpointerlockchange',
+    'webkitpointerlockerchange',
+    'pointerlockerror',
+    'mozpointerlockerror',
+    'webkitpointerlockerror',
+    'pointermove',
+    'pointout',
+    'pointerover',
+    'pointerup',
+    'progress',
+    'ratechange',
+    'reset',
+    'resize',
+    'scroll',
+    'seeked',
+    'seeking',
+    'select',
+    'selectionchange',
+    'selectstart',
+    'show',
+    'sort',
+    'stalled',
+    'submit',
+    'suspend',
+    'timeupdate',
+    'volumechange',
+    'touchcancel',
+    'touchmove',
+    'touchstart',
+    'transitioncancel',
+    'transitionend',
+    'waiting',
+    'wheel'
+];
+var documentEventNames = [
+    'afterscriptexecute', 'beforescriptexecute', 'DOMContentLoaded', 'fullscreenchange',
+    'mozfullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange', 'fullscreenerror',
+    'mozfullscreenerror', 'webkitfullscreenerror', 'msfullscreenerror', 'readystatechange'
+];
+var windowEventNames = [
+    'absolutedeviceorientation',
+    'afterinput',
+    'afterprint',
+    'appinstalled',
+    'beforeinstallprompt',
+    'beforeprint',
+    'beforeunload',
+    'devicelight',
+    'devicemotion',
+    'deviceorientation',
+    'deviceorientationabsolute',
+    'deviceproximity',
+    'hashchange',
+    'languagechange',
+    'message',
+    'mozbeforepaint',
+    'offline',
+    'online',
+    'paint',
+    'pageshow',
+    'pagehide',
+    'popstate',
+    'rejectionhandled',
+    'storage',
+    'unhandledrejection',
+    'unload',
+    'userproximity',
+    'vrdisplyconnected',
+    'vrdisplaydisconnected',
+    'vrdisplaypresentchange'
+];
+var htmlElementEventNames = [
+    'beforecopy', 'beforecut', 'beforepaste', 'copy', 'cut', 'paste', 'dragstart', 'loadend',
+    'animationstart', 'search', 'transitionrun', 'transitionstart', 'webkitanimationend',
+    'webkitanimationiteration', 'webkitanimationstart', 'webkittransitionend'
+];
+var mediaElementEventNames = ['encrypted', 'waitingforkey', 'msneedkey', 'mozinterruptbegin', 'mozinterruptend'];
+var ieElementEventNames = [
+    'activate',
+    'afterupdate',
+    'ariarequest',
+    'beforeactivate',
+    'beforedeactivate',
+    'beforeeditfocus',
+    'beforeupdate',
+    'cellchange',
+    'controlselect',
+    'dataavailable',
+    'datasetchanged',
+    'datasetcomplete',
+    'errorupdate',
+    'filterchange',
+    'layoutcomplete',
+    'losecapture',
+    'move',
+    'moveend',
+    'movestart',
+    'propertychange',
+    'resizeend',
+    'resizestart',
+    'rowenter',
+    'rowexit',
+    'rowsdelete',
+    'rowsinserted',
+    'command',
+    'compassneedscalibration',
+    'deactivate',
+    'help',
+    'mscontentzoom',
+    'msmanipulationstatechanged',
+    'msgesturechange',
+    'msgesturedoubletap',
+    'msgestureend',
+    'msgesturehold',
+    'msgesturestart',
+    'msgesturetap',
+    'msgotpointercapture',
+    'msinertiastart',
+    'mslostpointercapture',
+    'mspointercancel',
+    'mspointerdown',
+    'mspointerenter',
+    'mspointerhover',
+    'mspointerleave',
+    'mspointermove',
+    'mspointerout',
+    'mspointerover',
+    'mspointerup',
+    'pointerout',
+    'mssitemodejumplistitemremoved',
+    'msthumbnailclick',
+    'stop',
+    'storagecommit'
+];
+var webglEventNames = ['webglcontextrestored', 'webglcontextlost', 'webglcontextcreationerror'];
+var formEventNames = ['autocomplete', 'autocompleteerror'];
+var detailEventNames = ['toggle'];
+var frameEventNames = ['load'];
+var frameSetEventNames = ['blur', 'error', 'focus', 'load', 'resize', 'scroll'];
+var marqueeEventNames = ['bounce', 'finish', 'start'];
+var XMLHttpRequestEventNames = [
+    'loadstart', 'progress', 'abort', 'error', 'load', 'progress', 'timeout', 'loadend',
+    'readystatechange'
+];
+var IDBIndexEventNames = ['upgradeneeded', 'complete', 'abort', 'success', 'error', 'blocked', 'versionchange', 'close'];
+var websocketEventNames = ['close', 'error', 'open', 'message'];
+var eventNames = globalEventHandlersEventNames.concat(webglEventNames, formEventNames, detailEventNames, documentEventNames, windowEventNames, htmlElementEventNames, ieElementEventNames);
+function propertyDescriptorPatch(api, _global) {
+    if (isNode && !isMix) {
+        return;
+    }
+    var supportsWebSocket = typeof WebSocket !== 'undefined';
+    if (canPatchViaPropertyDescriptor()) {
+        // for browsers that we can patch the descriptor:  Chrome & Firefox
+        if (isBrowser) {
+            // in IE/Edge, onProp not exist in window object, but in WindowPrototype
+            // so we need to pass WindowPrototype to check onProp exist or not
+            patchOnProperties(window, eventNames, Object.getPrototypeOf(window));
+            patchOnProperties(Document.prototype, eventNames);
+            if (typeof window['SVGElement'] !== 'undefined') {
+                patchOnProperties(window['SVGElement'].prototype, eventNames);
+            }
+            patchOnProperties(Element.prototype, eventNames);
+            patchOnProperties(HTMLElement.prototype, eventNames);
+            patchOnProperties(HTMLMediaElement.prototype, mediaElementEventNames);
+            patchOnProperties(HTMLFrameSetElement.prototype, windowEventNames.concat(frameSetEventNames));
+            patchOnProperties(HTMLBodyElement.prototype, windowEventNames.concat(frameSetEventNames));
+            patchOnProperties(HTMLFrameElement.prototype, frameEventNames);
+            patchOnProperties(HTMLIFrameElement.prototype, frameEventNames);
+            var HTMLMarqueeElement_1 = window['HTMLMarqueeElement'];
+            if (HTMLMarqueeElement_1) {
+                patchOnProperties(HTMLMarqueeElement_1.prototype, marqueeEventNames);
+            }
+        }
+        patchOnProperties(XMLHttpRequest.prototype, XMLHttpRequestEventNames);
+        var XMLHttpRequestEventTarget = _global['XMLHttpRequestEventTarget'];
+        if (XMLHttpRequestEventTarget) {
+            patchOnProperties(XMLHttpRequestEventTarget && XMLHttpRequestEventTarget.prototype, XMLHttpRequestEventNames);
+        }
+        if (typeof IDBIndex !== 'undefined') {
+            patchOnProperties(IDBIndex.prototype, IDBIndexEventNames);
+            patchOnProperties(IDBRequest.prototype, IDBIndexEventNames);
+            patchOnProperties(IDBOpenDBRequest.prototype, IDBIndexEventNames);
+            patchOnProperties(IDBDatabase.prototype, IDBIndexEventNames);
+            patchOnProperties(IDBTransaction.prototype, IDBIndexEventNames);
+            patchOnProperties(IDBCursor.prototype, IDBIndexEventNames);
+        }
+        if (supportsWebSocket) {
+            patchOnProperties(WebSocket.prototype, websocketEventNames);
+        }
+    }
+    else {
+        // Safari, Android browsers (Jelly Bean)
+        patchViaCapturingAllTheEvents();
+        patchClass('XMLHttpRequest');
+        if (supportsWebSocket) {
+            apply(api, _global);
+        }
+    }
+}
+function canPatchViaPropertyDescriptor() {
+    if ((isBrowser || isMix) && !Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'onclick') &&
+        typeof Element !== 'undefined') {
+        // WebKit https://bugs.webkit.org/show_bug.cgi?id=134364
+        // IDL interface attributes are not configurable
+        var desc = Object.getOwnPropertyDescriptor(Element.prototype, 'onclick');
+        if (desc && !desc.configurable)
+            return false;
+    }
+    var xhrDesc = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'onreadystatechange');
+    // add enumerable and configurable here because in opera
+    // by default XMLHttpRequest.prototype.onreadystatechange is undefined
+    // without adding enumerable and configurable will cause onreadystatechange
+    // non-configurable
+    // and if XMLHttpRequest.prototype.onreadystatechange is undefined,
+    // we should set a real desc instead a fake one
+    if (xhrDesc) {
+        Object.defineProperty(XMLHttpRequest.prototype, 'onreadystatechange', {
+            enumerable: true,
+            configurable: true,
+            get: function () {
+                return true;
+            }
+        });
+        var req = new XMLHttpRequest();
+        var result = !!req.onreadystatechange;
+        // restore original desc
+        Object.defineProperty(XMLHttpRequest.prototype, 'onreadystatechange', xhrDesc || {});
+        return result;
+    }
+    else {
+        Object.defineProperty(XMLHttpRequest.prototype, 'onreadystatechange', {
+            enumerable: true,
+            configurable: true,
+            get: function () {
+                return this[zoneSymbol('fakeonreadystatechange')];
+            },
+            set: function (value) {
+                this[zoneSymbol('fakeonreadystatechange')] = value;
+            }
+        });
+        var req = new XMLHttpRequest();
+        var detectFunc = function () { };
+        req.onreadystatechange = detectFunc;
+        var result = req[zoneSymbol('fakeonreadystatechange')] === detectFunc;
+        req.onreadystatechange = null;
+        return result;
+    }
+}
+
+var unboundKey = zoneSymbol('unbound');
+// Whenever any eventListener fires, we check the eventListener target and all parents
+// for `onwhatever` properties and replace them with zone-bound functions
+// - Chrome (for now)
+function patchViaCapturingAllTheEvents() {
+    var _loop_1 = function (i) {
+        var property = eventNames[i];
+        var onproperty = 'on' + property;
+        self.addEventListener(property, function (event) {
+            var elt = event.target, bound, source;
+            if (elt) {
+                source = elt.constructor['name'] + '.' + onproperty;
+            }
+            else {
+                source = 'unknown.' + onproperty;
+            }
+            while (elt) {
+                if (elt[onproperty] && !elt[onproperty][unboundKey]) {
+                    bound = Zone.current.wrap(elt[onproperty], source);
+                    bound[unboundKey] = elt[onproperty];
+                    elt[onproperty] = bound;
+                }
+                elt = elt.parentElement;
+            }
+        }, true);
+    };
+    for (var i = 0; i < eventNames.length; i++) {
+        _loop_1(i);
+    }
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+function eventTargetPatch(_global, api) {
+    var WTF_ISSUE_555 = 'Anchor,Area,Audio,BR,Base,BaseFont,Body,Button,Canvas,Content,DList,Directory,Div,Embed,FieldSet,Font,Form,Frame,FrameSet,HR,Head,Heading,Html,IFrame,Image,Input,Keygen,LI,Label,Legend,Link,Map,Marquee,Media,Menu,Meta,Meter,Mod,OList,Object,OptGroup,Option,Output,Paragraph,Pre,Progress,Quote,Script,Select,Source,Span,Style,TableCaption,TableCell,TableCol,Table,TableRow,TableSection,TextArea,Title,Track,UList,Unknown,Video';
+    var NO_EVENT_TARGET = 'ApplicationCache,EventSource,FileReader,InputMethodContext,MediaController,MessagePort,Node,Performance,SVGElementInstance,SharedWorker,TextTrack,TextTrackCue,TextTrackList,WebKitNamedFlow,Window,Worker,WorkerGlobalScope,XMLHttpRequest,XMLHttpRequestEventTarget,XMLHttpRequestUpload,IDBRequest,IDBOpenDBRequest,IDBDatabase,IDBTransaction,IDBCursor,DBIndex,WebSocket'
+        .split(',');
+    var EVENT_TARGET = 'EventTarget';
+    var apis = [];
+    var isWtf = _global['wtf'];
+    var WTF_ISSUE_555_ARRAY = WTF_ISSUE_555.split(',');
+    if (isWtf) {
+        // Workaround for: https://github.com/google/tracing-framework/issues/555
+        apis = WTF_ISSUE_555_ARRAY.map(function (v) { return 'HTML' + v + 'Element'; }).concat(NO_EVENT_TARGET);
+    }
+    else if (_global[EVENT_TARGET]) {
+        apis.push(EVENT_TARGET);
+    }
+    else {
+        // Note: EventTarget is not available in all browsers,
+        // if it's not available, we instead patch the APIs in the IDL that inherit from EventTarget
+        apis = NO_EVENT_TARGET;
+    }
+    var isDisableIECheck = _global['__Zone_disable_IE_check'] || false;
+    var isEnableCrossContextCheck = _global['__Zone_enable_cross_context_check'] || false;
+    var ieOrEdge = isIEOrEdge();
+    var ADD_EVENT_LISTENER_SOURCE = '.addEventListener:';
+    var FUNCTION_WRAPPER = '[object FunctionWrapper]';
+    var BROWSER_TOOLS = 'function __BROWSERTOOLS_CONSOLE_SAFEFUNC() { [native code] }';
+    //  predefine all __zone_symbol__ + eventName + true/false string
+    for (var i = 0; i < eventNames.length; i++) {
+        var eventName = eventNames[i];
+        var falseEventName = eventName + FALSE_STR;
+        var trueEventName = eventName + TRUE_STR;
+        var symbol = ZONE_SYMBOL_PREFIX + falseEventName;
+        var symbolCapture = ZONE_SYMBOL_PREFIX + trueEventName;
+        zoneSymbolEventNames[eventName] = {};
+        zoneSymbolEventNames[eventName][FALSE_STR] = symbol;
+        zoneSymbolEventNames[eventName][TRUE_STR] = symbolCapture;
+    }
+    //  predefine all task.source string
+    for (var i = 0; i < WTF_ISSUE_555.length; i++) {
+        var target = WTF_ISSUE_555_ARRAY[i];
+        var targets = globalSources[target] = {};
+        for (var j = 0; j < eventNames.length; j++) {
+            var eventName = eventNames[j];
+            targets[eventName] = target + ADD_EVENT_LISTENER_SOURCE + eventName;
+        }
+    }
+    var checkIEAndCrossContext = function (nativeDelegate, delegate, target, args) {
+        if (!isDisableIECheck && ieOrEdge) {
+            if (isEnableCrossContextCheck) {
+                try {
+                    var testString = delegate.toString();
+                    if ((testString === FUNCTION_WRAPPER || testString == BROWSER_TOOLS)) {
+                        nativeDelegate.apply(target, args);
+                        return false;
+                    }
+                }
+                catch (error) {
+                    nativeDelegate.apply(target, args);
+                    return false;
+                }
+            }
+            else {
+                var testString = delegate.toString();
+                if ((testString === FUNCTION_WRAPPER || testString == BROWSER_TOOLS)) {
+                    nativeDelegate.apply(target, args);
+                    return false;
+                }
+            }
+        }
+        else if (isEnableCrossContextCheck) {
+            try {
+                delegate.toString();
+            }
+            catch (error) {
+                nativeDelegate.apply(target, args);
+                return false;
+            }
+        }
+        return true;
+    };
+    var apiTypes = [];
+    for (var i = 0; i < apis.length; i++) {
+        var type = _global[apis[i]];
+        apiTypes.push(type && type.prototype);
+    }
+    patchEventTarget(_global, apiTypes, { validateHandler: checkIEAndCrossContext });
+    api.patchEventTarget = patchEventTarget;
+    return true;
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+function registerElementPatch(_global) {
+    if ((!isBrowser && !isMix) || !('registerElement' in _global.document)) {
+        return;
+    }
+    var _registerElement = document.registerElement;
+    var callbacks = ['createdCallback', 'attachedCallback', 'detachedCallback', 'attributeChangedCallback'];
+    document.registerElement = function (name, opts) {
+        if (opts && opts.prototype) {
+            callbacks.forEach(function (callback) {
+                var source = 'Document.registerElement::' + callback;
+                if (opts.prototype.hasOwnProperty(callback)) {
+                    var descriptor = Object.getOwnPropertyDescriptor(opts.prototype, callback);
+                    if (descriptor && descriptor.value) {
+                        descriptor.value = Zone.current.wrap(descriptor.value, source);
+                        _redefineProperty(opts.prototype, callback, descriptor);
+                    }
+                    else {
+                        opts.prototype[callback] = Zone.current.wrap(opts.prototype[callback], source);
+                    }
+                }
+                else if (opts.prototype[callback]) {
+                    opts.prototype[callback] = Zone.current.wrap(opts.prototype[callback], source);
+                }
+            });
+        }
+        return _registerElement.apply(document, [name, opts]);
+    };
+    attachOriginToPatched(document.registerElement, _registerElement);
+}
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+Zone.__load_patch('timers', function (global, Zone, api) {
+    var set = 'set';
+    var clear = 'clear';
+    patchTimer(global, set, clear, 'Timeout');
+    patchTimer(global, set, clear, 'Interval');
+    patchTimer(global, set, clear, 'Immediate');
+    patchTimer(global, 'request', 'cancel', 'AnimationFrame');
+    patchTimer(global, 'mozRequest', 'mozCancel', 'AnimationFrame');
+    patchTimer(global, 'webkitRequest', 'webkitCancel', 'AnimationFrame');
+});
+Zone.__load_patch('blocking', function (global, Zone, api) {
+    var blockingMethods = ['alert', 'prompt', 'confirm'];
+    for (var i = 0; i < blockingMethods.length; i++) {
+        var name_1 = blockingMethods[i];
+        patchMethod(global, name_1, function (delegate, symbol, name) {
+            return function (s, args) {
+                return Zone.current.run(delegate, global, args, name);
+            };
+        });
+    }
+});
+Zone.__load_patch('EventTarget', function (global, Zone, api) {
+    eventTargetPatch(global, api);
+    // patch XMLHttpRequestEventTarget's addEventListener/removeEventListener
+    var XMLHttpRequestEventTarget = global['XMLHttpRequestEventTarget'];
+    if (XMLHttpRequestEventTarget && XMLHttpRequestEventTarget.prototype) {
+        api.patchEventTarget(global, [XMLHttpRequestEventTarget.prototype]);
+    }
+    patchClass('MutationObserver');
+    patchClass('WebKitMutationObserver');
+    patchClass('FileReader');
+});
+Zone.__load_patch('on_property', function (global, Zone, api) {
+    propertyDescriptorPatch(api, global);
+    propertyPatch();
+    registerElementPatch(global);
+});
+Zone.__load_patch('canvas', function (global, Zone, api) {
+    var HTMLCanvasElement = global['HTMLCanvasElement'];
+    if (typeof HTMLCanvasElement !== 'undefined' && HTMLCanvasElement.prototype &&
+        HTMLCanvasElement.prototype.toBlob) {
+        patchMacroTask(HTMLCanvasElement.prototype, 'toBlob', function (self, args) {
+            return { name: 'HTMLCanvasElement.toBlob', target: self, callbackIndex: 0, args: args };
+        });
+    }
+});
+Zone.__load_patch('XHR', function (global, Zone, api) {
+    // Treat XMLHTTPRequest as a macrotask.
+    patchXHR(global);
+    var XHR_TASK = zoneSymbol('xhrTask');
+    var XHR_SYNC = zoneSymbol('xhrSync');
+    var XHR_LISTENER = zoneSymbol('xhrListener');
+    var XHR_SCHEDULED = zoneSymbol('xhrScheduled');
+    function patchXHR(window) {
+        function findPendingTask(target) {
+            var pendingTask = target[XHR_TASK];
+            return pendingTask;
+        }
+        function scheduleTask(task) {
+            XMLHttpRequest[XHR_SCHEDULED] = false;
+            var data = task.data;
+            // remove existing event listener
+            var listener = data.target[XHR_LISTENER];
+            var oriAddListener = data.target[zoneSymbol('addEventListener')];
+            var oriRemoveListener = data.target[zoneSymbol('removeEventListener')];
+            if (listener) {
+                oriRemoveListener.apply(data.target, ['readystatechange', listener]);
+            }
+            var newListener = data.target[XHR_LISTENER] = function () {
+                if (data.target.readyState === data.target.DONE) {
+                    // sometimes on some browsers XMLHttpRequest will fire onreadystatechange with
+                    // readyState=4 multiple times, so we need to check task state here
+                    if (!data.aborted && XMLHttpRequest[XHR_SCHEDULED] &&
+                        task.state === 'scheduled') {
+                        task.invoke();
+                    }
+                }
+            };
+            oriAddListener.apply(data.target, ['readystatechange', newListener]);
+            var storedTask = data.target[XHR_TASK];
+            if (!storedTask) {
+                data.target[XHR_TASK] = task;
+            }
+            sendNative.apply(data.target, data.args);
+            XMLHttpRequest[XHR_SCHEDULED] = true;
+            return task;
+        }
+        function placeholderCallback() { }
+        function clearTask(task) {
+            var data = task.data;
+            // Note - ideally, we would call data.target.removeEventListener here, but it's too late
+            // to prevent it from firing. So instead, we store info for the event listener.
+            data.aborted = true;
+            return abortNative.apply(data.target, data.args);
+        }
+        var openNative = patchMethod(window.XMLHttpRequest.prototype, 'open', function () { return function (self, args) {
+            self[XHR_SYNC] = args[2] == false;
+            return openNative.apply(self, args);
+        }; });
+        var sendNative = patchMethod(window.XMLHttpRequest.prototype, 'send', function () { return function (self, args) {
+            var zone = Zone.current;
+            if (self[XHR_SYNC]) {
+                // if the XHR is sync there is no task to schedule, just execute the code.
+                return sendNative.apply(self, args);
+            }
+            else {
+                var options = { target: self, isPeriodic: false, delay: null, args: args, aborted: false };
+                return zone.scheduleMacroTask('XMLHttpRequest.send', placeholderCallback, options, scheduleTask, clearTask);
+            }
+        }; });
+        var abortNative = patchMethod(window.XMLHttpRequest.prototype, 'abort', function (delegate) { return function (self, args) {
+            var task = findPendingTask(self);
+            if (task && typeof task.type == 'string') {
+                // If the XHR has already completed, do nothing.
+                // If the XHR has already been aborted, do nothing.
+                // Fix #569, call abort multiple times before done will cause
+                // macroTask task count be negative number
+                if (task.cancelFn == null || (task.data && task.data.aborted)) {
+                    return;
+                }
+                task.zone.cancelTask(task);
+            }
+            // Otherwise, we are trying to abort an XHR which has not yet been sent, so there is no
+            // task
+            // to cancel. Do nothing.
+        }; });
+    }
+});
+Zone.__load_patch('geolocation', function (global, Zone, api) {
+    /// GEO_LOCATION
+    if (global['navigator'] && global['navigator'].geolocation) {
+        patchPrototype(global['navigator'].geolocation, ['getCurrentPosition', 'watchPosition']);
+    }
+});
+Zone.__load_patch('PromiseRejectionEvent', function (global, Zone, api) {
+    // handle unhandled promise rejection
+    function findPromiseRejectionHandler(evtName) {
+        return function (e) {
+            var eventTasks = findEventTasks(global, evtName);
+            eventTasks.forEach(function (eventTask) {
+                // windows has added unhandledrejection event listener
+                // trigger the event listener
+                var PromiseRejectionEvent = global['PromiseRejectionEvent'];
+                if (PromiseRejectionEvent) {
+                    var evt = new PromiseRejectionEvent(evtName, { promise: e.promise, reason: e.rejection });
+                    eventTask.invoke(evt);
+                }
+            });
+        };
+    }
+    if (global['PromiseRejectionEvent']) {
+        Zone[zoneSymbol('unhandledPromiseRejectionHandler')] =
+            findPromiseRejectionHandler('unhandledrejection');
+        Zone[zoneSymbol('rejectionHandledHandler')] =
+            findPromiseRejectionHandler('rejectionhandled');
+    }
+});
+Zone.__load_patch('util', function (global, Zone, api) {
+    api.patchOnProperties = patchOnProperties;
+    api.patchMethod = patchMethod;
+});
+
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
+})));
+
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5)))
+
+/***/ }),
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26211,18 +28962,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var core_1 = __webpack_require__(1);
-var platform_browser_1 = __webpack_require__(16);
-var user_module_1 = __webpack_require__(43);
-var app_component_1 = __webpack_require__(44);
+var core_1 = __webpack_require__(0);
+var platform_browser_1 = __webpack_require__(17);
+var user_module_1 = __webpack_require__(45);
+var app_component_1 = __webpack_require__(46);
+var greeting_form_component_1 = __webpack_require__(47);
+var greeting_list_component_1 = __webpack_require__(48);
+var greeting_service_1 = __webpack_require__(9);
+var forms_1 = __webpack_require__(51);
 var AppModule = (function () {
     function AppModule() {
     }
     AppModule = __decorate([
         core_1.NgModule({
-            providers: [],
-            declarations: [app_component_1.AppComponent],
-            imports: [platform_browser_1.BrowserModule, user_module_1.UserModule],
+            providers: [greeting_service_1.GreetingService],
+            declarations: [app_component_1.AppComponent, greeting_form_component_1.GreetingFormComponent, greeting_list_component_1.GreetingListComponent],
+            imports: [platform_browser_1.BrowserModule, user_module_1.UserModule, forms_1.FormsModule],
             exports: [],
             bootstrap: [app_component_1.AppComponent]
         })
@@ -26233,14 +28988,14 @@ exports.AppModule = AppModule;
 
 
 /***/ }),
-/* 22 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var Subscriber_1 = __webpack_require__(4);
 var rxSubscriber_1 = __webpack_require__(7);
-var Observer_1 = __webpack_require__(12);
+var Observer_1 = __webpack_require__(13);
 function toSubscriber(nextOrObserver, error, complete) {
     if (nextOrObserver) {
         if (nextOrObserver instanceof Subscriber_1.Subscriber) {
@@ -26259,7 +29014,7 @@ exports.toSubscriber = toSubscriber;
 //# sourceMappingURL=toSubscriber.js.map
 
 /***/ }),
-/* 23 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26268,12 +29023,12 @@ exports.isArray = Array.isArray || (function (x) { return x && typeof x.length =
 //# sourceMappingURL=isArray.js.map
 
 /***/ }),
-/* 24 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var errorObject_1 = __webpack_require__(11);
+var errorObject_1 = __webpack_require__(12);
 var tryCatchTarget;
 function tryCatcher() {
     try {
@@ -26293,7 +29048,7 @@ exports.tryCatch = tryCatch;
 //# sourceMappingURL=tryCatch.js.map
 
 /***/ }),
-/* 25 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26324,25 +29079,25 @@ exports.UnsubscriptionError = UnsubscriptionError;
 //# sourceMappingURL=UnsubscriptionError.js.map
 
 /***/ }),
-/* 26 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var merge_1 = __webpack_require__(27);
+var merge_1 = __webpack_require__(29);
 exports.merge = merge_1.mergeStatic;
 //# sourceMappingURL=merge.js.map
 
 /***/ }),
-/* 27 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var Observable_1 = __webpack_require__(0);
-var ArrayObservable_1 = __webpack_require__(28);
-var mergeAll_1 = __webpack_require__(31);
-var isScheduler_1 = __webpack_require__(14);
+var Observable_1 = __webpack_require__(1);
+var ArrayObservable_1 = __webpack_require__(30);
+var mergeAll_1 = __webpack_require__(33);
+var isScheduler_1 = __webpack_require__(15);
 /* tslint:enable:max-line-length */
 /**
  * Creates an output Observable which concurrently emits all values from every
@@ -26485,7 +29240,7 @@ exports.mergeStatic = mergeStatic;
 //# sourceMappingURL=merge.js.map
 
 /***/ }),
-/* 28 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26495,10 +29250,10 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var Observable_1 = __webpack_require__(0);
-var ScalarObservable_1 = __webpack_require__(29);
-var EmptyObservable_1 = __webpack_require__(30);
-var isScheduler_1 = __webpack_require__(14);
+var Observable_1 = __webpack_require__(1);
+var ScalarObservable_1 = __webpack_require__(31);
+var EmptyObservable_1 = __webpack_require__(32);
+var isScheduler_1 = __webpack_require__(15);
 /**
  * We need this JSDoc comment for affecting ESDoc.
  * @extends {Ignored}
@@ -26613,7 +29368,7 @@ exports.ArrayObservable = ArrayObservable;
 //# sourceMappingURL=ArrayObservable.js.map
 
 /***/ }),
-/* 29 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26623,7 +29378,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var Observable_1 = __webpack_require__(0);
+var Observable_1 = __webpack_require__(1);
 /**
  * We need this JSDoc comment for affecting ESDoc.
  * @extends {Ignored}
@@ -26677,7 +29432,7 @@ exports.ScalarObservable = ScalarObservable;
 //# sourceMappingURL=ScalarObservable.js.map
 
 /***/ }),
-/* 30 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26687,7 +29442,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var Observable_1 = __webpack_require__(0);
+var Observable_1 = __webpack_require__(1);
 /**
  * We need this JSDoc comment for affecting ESDoc.
  * @extends {Ignored}
@@ -26764,7 +29519,7 @@ exports.EmptyObservable = EmptyObservable;
 //# sourceMappingURL=EmptyObservable.js.map
 
 /***/ }),
-/* 31 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26774,8 +29529,8 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var OuterSubscriber_1 = __webpack_require__(32);
-var subscribeToResult_1 = __webpack_require__(33);
+var OuterSubscriber_1 = __webpack_require__(34);
+var subscribeToResult_1 = __webpack_require__(35);
 /**
  * Converts a higher-order Observable into a first-order Observable which
  * concurrently delivers all values that are emitted on the inner Observables.
@@ -26881,7 +29636,7 @@ exports.MergeAllSubscriber = MergeAllSubscriber;
 //# sourceMappingURL=mergeAll.js.map
 
 /***/ }),
-/* 32 */
+/* 34 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -26917,19 +29672,19 @@ exports.OuterSubscriber = OuterSubscriber;
 //# sourceMappingURL=OuterSubscriber.js.map
 
 /***/ }),
-/* 33 */
+/* 35 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 var root_1 = __webpack_require__(3);
-var isArrayLike_1 = __webpack_require__(34);
-var isPromise_1 = __webpack_require__(35);
-var isObject_1 = __webpack_require__(10);
-var Observable_1 = __webpack_require__(0);
-var iterator_1 = __webpack_require__(36);
-var InnerSubscriber_1 = __webpack_require__(37);
-var observable_1 = __webpack_require__(13);
+var isArrayLike_1 = __webpack_require__(36);
+var isPromise_1 = __webpack_require__(37);
+var isObject_1 = __webpack_require__(11);
+var Observable_1 = __webpack_require__(1);
+var iterator_1 = __webpack_require__(38);
+var InnerSubscriber_1 = __webpack_require__(39);
+var observable_1 = __webpack_require__(14);
 function subscribeToResult(outerSubscriber, result, outerValue, outerIndex) {
     var destination = new InnerSubscriber_1.InnerSubscriber(outerSubscriber, outerValue, outerIndex);
     if (destination.closed) {
@@ -27001,7 +29756,7 @@ exports.subscribeToResult = subscribeToResult;
 //# sourceMappingURL=subscribeToResult.js.map
 
 /***/ }),
-/* 34 */
+/* 36 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27010,7 +29765,7 @@ exports.isArrayLike = (function (x) { return x && typeof x.length === 'number'; 
 //# sourceMappingURL=isArrayLike.js.map
 
 /***/ }),
-/* 35 */
+/* 37 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27022,7 +29777,7 @@ exports.isPromise = isPromise;
 //# sourceMappingURL=isPromise.js.map
 
 /***/ }),
-/* 36 */
+/* 38 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27066,7 +29821,7 @@ exports.$$iterator = exports.iterator;
 //# sourceMappingURL=iterator.js.map
 
 /***/ }),
-/* 37 */
+/* 39 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27108,12 +29863,12 @@ exports.InnerSubscriber = InnerSubscriber;
 //# sourceMappingURL=InnerSubscriber.js.map
 
 /***/ }),
-/* 38 */
+/* 40 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var multicast_1 = __webpack_require__(39);
+var multicast_1 = __webpack_require__(41);
 var Subject_1 = __webpack_require__(8);
 function shareSubjectFactory() {
     return new Subject_1.Subject();
@@ -27138,12 +29893,12 @@ exports.share = share;
 //# sourceMappingURL=share.js.map
 
 /***/ }),
-/* 39 */
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var ConnectableObservable_1 = __webpack_require__(40);
+var ConnectableObservable_1 = __webpack_require__(42);
 /* tslint:enable:max-line-length */
 /**
  * Returns an Observable that emits the results of invoking a specified selector on items
@@ -27201,7 +29956,7 @@ exports.MulticastOperator = MulticastOperator;
 //# sourceMappingURL=multicast.js.map
 
 /***/ }),
-/* 40 */
+/* 42 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27212,9 +29967,9 @@ var __extends = (this && this.__extends) || function (d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var Subject_1 = __webpack_require__(8);
-var Observable_1 = __webpack_require__(0);
+var Observable_1 = __webpack_require__(1);
 var Subscriber_1 = __webpack_require__(4);
-var Subscription_1 = __webpack_require__(5);
+var Subscription_1 = __webpack_require__(6);
 /**
  * @class ConnectableObservable<T>
  */
@@ -27376,7 +30131,7 @@ var RefCountSubscriber = (function (_super) {
 //# sourceMappingURL=ConnectableObservable.js.map
 
 /***/ }),
-/* 41 */
+/* 43 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27409,7 +30164,7 @@ exports.ObjectUnsubscribedError = ObjectUnsubscribedError;
 //# sourceMappingURL=ObjectUnsubscribedError.js.map
 
 /***/ }),
-/* 42 */
+/* 44 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27419,7 +30174,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var Subscription_1 = __webpack_require__(5);
+var Subscription_1 = __webpack_require__(6);
 /**
  * We need this JSDoc comment for affecting ESDoc.
  * @ignore
@@ -27455,7 +30210,7 @@ exports.SubjectSubscription = SubjectSubscription;
 //# sourceMappingURL=SubjectSubscription.js.map
 
 /***/ }),
-/* 43 */
+/* 45 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27467,7 +30222,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var core_1 = __webpack_require__(1);
+var core_1 = __webpack_require__(0);
 var UserModule = (function () {
     function UserModule() {
     }
@@ -27484,7 +30239,7 @@ exports.UserModule = UserModule;
 
 
 /***/ }),
-/* 44 */
+/* 46 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27496,7 +30251,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var core_1 = __webpack_require__(1);
+var core_1 = __webpack_require__(0);
 var AppComponent = (function () {
     function AppComponent() {
     }
@@ -27505,7 +30260,7 @@ var AppComponent = (function () {
             selector: 'app-component',
             // selector: '.app-component' // for class
             // selector: '[app-component]' // for attribute
-            template: "\n    <h1>Hello world</h1>\n    "
+            template: "\n    <div>\n        <greeting-form></greeting-form>\n        <greeting-list></greeting-list>\n    </div>\n    "
         })
     ], AppComponent);
     return AppComponent;
@@ -27514,7 +30269,84 @@ exports.AppComponent = AppComponent;
 
 
 /***/ }),
-/* 45 */
+/* 47 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+/**
+ * greetin form input
+ */
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var core_1 = __webpack_require__(0);
+var greeting_service_1 = __webpack_require__(9);
+var GreetingFormComponent = (function () {
+    function GreetingFormComponent(_greetingService) {
+        this._greetingService = _greetingService;
+        this.greetingInput = "";
+    }
+    GreetingFormComponent.prototype.addGreeting = function () {
+        this._greetingService.addGreeting(this.greetingInput);
+    };
+    GreetingFormComponent = __decorate([
+        core_1.Component({
+            selector: 'greeting-form',
+            templateUrl: './src/app/components/greeting-form/greeting-form.component.html',
+        }),
+        __metadata("design:paramtypes", [greeting_service_1.GreetingService])
+    ], GreetingFormComponent);
+    return GreetingFormComponent;
+}());
+exports.GreetingFormComponent = GreetingFormComponent;
+
+
+/***/ }),
+/* 48 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var core_1 = __webpack_require__(0);
+var greeting_service_1 = __webpack_require__(9);
+var GreetingListComponent = (function () {
+    function GreetingListComponent(_greetingService) {
+        this._greetingService = _greetingService;
+        this.greetings = [];
+        this.greetings = this._greetingService.getAllGreeting();
+    }
+    GreetingListComponent = __decorate([
+        core_1.Component({
+            selector: 'greeting-list',
+            templateUrl: './src/app/components/greeting-list/greeting-list.component.html'
+        }),
+        __metadata("design:paramtypes", [greeting_service_1.GreetingService])
+    ], GreetingListComponent);
+    return GreetingListComponent;
+}());
+exports.GreetingListComponent = GreetingListComponent;
+
+
+/***/ }),
+/* 49 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -27525,10 +30357,10 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵINTERNAL_BROWSER_DYNAMIC_PLATFORM_PROVIDERS", function() { return INTERNAL_BROWSER_DYNAMIC_PLATFORM_PROVIDERS; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵResourceLoaderImpl", function() { return ResourceLoaderImpl; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tslib__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_compiler__ = __webpack_require__(46);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_core__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__angular_common__ = __webpack_require__(17);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__angular_platform_browser__ = __webpack_require__(16);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_compiler__ = __webpack_require__(50);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_core__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__angular_common__ = __webpack_require__(18);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__angular_platform_browser__ = __webpack_require__(17);
 
 /**
  * @license Angular v4.3.4
@@ -27698,7 +30530,7 @@ var platformBrowserDynamic = Object(__WEBPACK_IMPORTED_MODULE_2__angular_core__[
 
 
 /***/ }),
-/* 46 */
+/* 50 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -27929,7 +30761,7 @@ var platformBrowserDynamic = Object(__WEBPACK_IMPORTED_MODULE_2__angular_core__[
 /* unused harmony export createElementCssSelector */
 /* unused harmony export removeSummaryDuplicates */
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tslib__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_core__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_core__ = __webpack_require__(0);
 
 /**
  * @license Angular v4.3.4
@@ -55569,21 +58401,101 @@ function _mergeArrays(parts) {
 //# sourceMappingURL=compiler.es5.js.map
 
 /***/ }),
-/* 47 */
-/***/ (function(module, exports, __webpack_require__) {
+/* 51 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(global) {/**
-* @license
-* Copyright Google Inc. All Rights Reserved.
-*
-* Use of this source code is governed by an MIT-style license that can be
-* found in the LICENSE file at https://angular.io/license
-*/
-(function (global, factory) {
-	 true ? factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(factory());
-}(this, (function () { 'use strict';
+"use strict";
+Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "AbstractControlDirective", function() { return AbstractControlDirective; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "AbstractFormGroupDirective", function() { return AbstractFormGroupDirective; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "CheckboxControlValueAccessor", function() { return CheckboxControlValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ControlContainer", function() { return ControlContainer; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NG_VALUE_ACCESSOR", function() { return NG_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "COMPOSITION_BUFFER_MODE", function() { return COMPOSITION_BUFFER_MODE; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "DefaultValueAccessor", function() { return DefaultValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgControl", function() { return NgControl; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgControlStatus", function() { return NgControlStatus; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgControlStatusGroup", function() { return NgControlStatusGroup; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgForm", function() { return NgForm; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgModel", function() { return NgModel; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgModelGroup", function() { return NgModelGroup; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "RadioControlValueAccessor", function() { return RadioControlValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormControlDirective", function() { return FormControlDirective; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormControlName", function() { return FormControlName; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormGroupDirective", function() { return FormGroupDirective; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormArrayName", function() { return FormArrayName; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormGroupName", function() { return FormGroupName; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NgSelectOption", function() { return NgSelectOption; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SelectControlValueAccessor", function() { return SelectControlValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SelectMultipleControlValueAccessor", function() { return SelectMultipleControlValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "CheckboxRequiredValidator", function() { return CheckboxRequiredValidator; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "EmailValidator", function() { return EmailValidator; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MaxLengthValidator", function() { return MaxLengthValidator; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "MinLengthValidator", function() { return MinLengthValidator; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "PatternValidator", function() { return PatternValidator; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "RequiredValidator", function() { return RequiredValidator; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormBuilder", function() { return FormBuilder; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "AbstractControl", function() { return AbstractControl; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormArray", function() { return FormArray; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormControl", function() { return FormControl; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormGroup", function() { return FormGroup; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NG_ASYNC_VALIDATORS", function() { return NG_ASYNC_VALIDATORS; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NG_VALIDATORS", function() { return NG_VALIDATORS; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Validators", function() { return Validators; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "VERSION", function() { return VERSION; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "FormsModule", function() { return FormsModule; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ReactiveFormsModule", function() { return ReactiveFormsModule; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵba", function() { return InternalFormsSharedModule; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵz", function() { return REACTIVE_DRIVEN_DIRECTIVES; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵx", function() { return SHARED_FORM_DIRECTIVES; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵy", function() { return TEMPLATE_DRIVEN_DIRECTIVES; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵa", function() { return CHECKBOX_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵb", function() { return DEFAULT_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵc", function() { return AbstractControlStatus; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵd", function() { return ngControlStatusHost; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵe", function() { return formDirectiveProvider; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵf", function() { return formControlBinding; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵg", function() { return modelGroupProvider; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵbf", function() { return NgNoValidate; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵbb", function() { return NUMBER_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵbc", function() { return NumberValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵh", function() { return RADIO_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵi", function() { return RadioControlRegistry; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵbd", function() { return RANGE_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵbe", function() { return RangeValueAccessor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵj", function() { return formControlBinding$1; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵk", function() { return controlNameBinding; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵl", function() { return formDirectiveProvider$1; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵn", function() { return formArrayNameProvider; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵm", function() { return formGroupNameProvider; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵo", function() { return SELECT_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵq", function() { return NgSelectMultipleOption; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵp", function() { return SELECT_MULTIPLE_VALUE_ACCESSOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵs", function() { return CHECKBOX_REQUIRED_VALIDATOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵt", function() { return EMAIL_VALIDATOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵv", function() { return MAX_LENGTH_VALIDATOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵu", function() { return MIN_LENGTH_VALIDATOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵw", function() { return PATTERN_VALIDATOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ɵr", function() { return REQUIRED_VALIDATOR; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tslib__ = __webpack_require__(2);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_core__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_rxjs_observable_forkJoin__ = __webpack_require__(52);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_rxjs_observable_forkJoin___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_rxjs_observable_forkJoin__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_rxjs_observable_fromPromise__ = __webpack_require__(54);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_rxjs_observable_fromPromise___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_rxjs_observable_fromPromise__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_rxjs_operator_map__ = __webpack_require__(56);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_rxjs_operator_map___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_rxjs_operator_map__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__angular_platform_browser__ = __webpack_require__(17);
+
+/**
+ * @license Angular v4.3.5
+ * (c) 2010-2017 Google, Inc. https://angular.io/
+ * License: MIT
+ */
+
+
+
+
 
 /**
  * @license
@@ -55592,966 +58504,228 @@ function _mergeArrays(parts) {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-var Zone$1 = (function (global) {
-    var performance = global['performance'];
-    function mark(name) {
-        performance && performance['mark'] && performance['mark'](name);
+/**
+ * Base class for control directives.
+ *
+ * Only used internally in the forms module.
+ *
+ * \@stable
+ * @abstract
+ */
+var AbstractControlDirective = (function () {
+    function AbstractControlDirective() {
     }
-    function performanceMeasure(name, label) {
-        performance && performance['measure'] && performance['measure'](name, label);
-    }
-    mark('Zone');
-    if (global['Zone']) {
-        throw new Error('Zone already loaded.');
-    }
-    var Zone = (function () {
-        function Zone(parent, zoneSpec) {
-            this._properties = null;
-            this._parent = parent;
-            this._name = zoneSpec ? zoneSpec.name || 'unnamed' : '<root>';
-            this._properties = zoneSpec && zoneSpec.properties || {};
-            this._zoneDelegate =
-                new ZoneDelegate(this, this._parent && this._parent._zoneDelegate, zoneSpec);
-        }
-        Zone.assertZonePatched = function () {
-            if (global['Promise'] !== patches['ZoneAwarePromise']) {
-                throw new Error('Zone.js has detected that ZoneAwarePromise `(window|global).Promise` ' +
-                    'has been overwritten.\n' +
-                    'Most likely cause is that a Promise polyfill has been loaded ' +
-                    'after Zone.js (Polyfilling Promise api is not necessary when zone.js is loaded. ' +
-                    'If you must load one, do so before loading zone.js.)');
-            }
-        };
-        Object.defineProperty(Zone, "root", {
-            get: function () {
-                var zone = Zone.current;
-                while (zone.parent) {
-                    zone = zone.parent;
-                }
-                return zone;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Zone, "current", {
-            get: function () {
-                return _currentZoneFrame.zone;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        
-        Object.defineProperty(Zone, "currentTask", {
-            get: function () {
-                return _currentTask;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        
-        Zone.__load_patch = function (name, fn) {
-            if (patches.hasOwnProperty(name)) {
-                throw Error('Already loaded patch: ' + name);
-            }
-            else if (!global['__Zone_disable_' + name]) {
-                var perfName = 'Zone:' + name;
-                mark(perfName);
-                patches[name] = fn(global, Zone, _api);
-                performanceMeasure(perfName, perfName);
-            }
-        };
-        Object.defineProperty(Zone.prototype, "parent", {
-            get: function () {
-                return this._parent;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        
-        Object.defineProperty(Zone.prototype, "name", {
-            get: function () {
-                return this._name;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        
-        Zone.prototype.get = function (key) {
-            var zone = this.getZoneWith(key);
-            if (zone)
-                return zone._properties[key];
-        };
-        Zone.prototype.getZoneWith = function (key) {
-            var current = this;
-            while (current) {
-                if (current._properties.hasOwnProperty(key)) {
-                    return current;
-                }
-                current = current._parent;
-            }
-            return null;
-        };
-        Zone.prototype.fork = function (zoneSpec) {
-            if (!zoneSpec)
-                throw new Error('ZoneSpec required!');
-            return this._zoneDelegate.fork(this, zoneSpec);
-        };
-        Zone.prototype.wrap = function (callback, source) {
-            if (typeof callback !== 'function') {
-                throw new Error('Expecting function got: ' + callback);
-            }
-            var _callback = this._zoneDelegate.intercept(this, callback, source);
-            var zone = this;
-            return function () {
-                return zone.runGuarded(_callback, this, arguments, source);
-            };
-        };
-        Zone.prototype.run = function (callback, applyThis, applyArgs, source) {
-            if (applyThis === void 0) { applyThis = undefined; }
-            if (applyArgs === void 0) { applyArgs = null; }
-            if (source === void 0) { source = null; }
-            _currentZoneFrame = { parent: _currentZoneFrame, zone: this };
-            try {
-                return this._zoneDelegate.invoke(this, callback, applyThis, applyArgs, source);
-            }
-            finally {
-                _currentZoneFrame = _currentZoneFrame.parent;
-            }
-        };
-        Zone.prototype.runGuarded = function (callback, applyThis, applyArgs, source) {
-            if (applyThis === void 0) { applyThis = null; }
-            if (applyArgs === void 0) { applyArgs = null; }
-            if (source === void 0) { source = null; }
-            _currentZoneFrame = { parent: _currentZoneFrame, zone: this };
-            try {
-                try {
-                    return this._zoneDelegate.invoke(this, callback, applyThis, applyArgs, source);
-                }
-                catch (error) {
-                    if (this._zoneDelegate.handleError(this, error)) {
-                        throw error;
-                    }
-                }
-            }
-            finally {
-                _currentZoneFrame = _currentZoneFrame.parent;
-            }
-        };
-        Zone.prototype.runTask = function (task, applyThis, applyArgs) {
-            if (task.zone != this) {
-                throw new Error('A task can only be run in the zone of creation! (Creation: ' +
-                    (task.zone || NO_ZONE).name + '; Execution: ' + this.name + ')');
-            }
-            // https://github.com/angular/zone.js/issues/778, sometimes eventTask
-            // will run in notScheduled(canceled) state, we should not try to
-            // run such kind of task but just return
-            // we have to define an variable here, if not
-            // typescript compiler will complain below
-            var isNotScheduled = task.state === notScheduled;
-            if (isNotScheduled && task.type === eventTask) {
-                return;
-            }
-            var reEntryGuard = task.state != running;
-            reEntryGuard && task._transitionTo(running, scheduled);
-            task.runCount++;
-            var previousTask = _currentTask;
-            _currentTask = task;
-            _currentZoneFrame = { parent: _currentZoneFrame, zone: this };
-            try {
-                if (task.type == macroTask && task.data && !task.data.isPeriodic) {
-                    task.cancelFn = null;
-                }
-                try {
-                    return this._zoneDelegate.invokeTask(this, task, applyThis, applyArgs);
-                }
-                catch (error) {
-                    if (this._zoneDelegate.handleError(this, error)) {
-                        throw error;
-                    }
-                }
-            }
-            finally {
-                // if the task's state is notScheduled or unknown, then it has already been cancelled
-                // we should not reset the state to scheduled
-                if (task.state !== notScheduled && task.state !== unknown) {
-                    if (task.type == eventTask || (task.data && task.data.isPeriodic)) {
-                        reEntryGuard && task._transitionTo(scheduled, running);
-                    }
-                    else {
-                        task.runCount = 0;
-                        this._updateTaskCount(task, -1);
-                        reEntryGuard &&
-                            task._transitionTo(notScheduled, running, notScheduled);
-                    }
-                }
-                _currentZoneFrame = _currentZoneFrame.parent;
-                _currentTask = previousTask;
-            }
-        };
-        Zone.prototype.scheduleTask = function (task) {
-            if (task.zone && task.zone !== this) {
-                // check if the task was rescheduled, the newZone
-                // should not be the children of the original zone
-                var newZone = this;
-                while (newZone) {
-                    if (newZone === task.zone) {
-                        throw Error("can not reschedule task to " + this
-                            .name + " which is descendants of the original zone " + task.zone.name);
-                    }
-                    newZone = newZone.parent;
-                }
-            }
-            task._transitionTo(scheduling, notScheduled);
-            var zoneDelegates = [];
-            task._zoneDelegates = zoneDelegates;
-            task._zone = this;
-            try {
-                task = this._zoneDelegate.scheduleTask(this, task);
-            }
-            catch (err) {
-                // should set task's state to unknown when scheduleTask throw error
-                // because the err may from reschedule, so the fromState maybe notScheduled
-                task._transitionTo(unknown, scheduling, notScheduled);
-                // TODO: @JiaLiPassion, should we check the result from handleError?
-                this._zoneDelegate.handleError(this, err);
-                throw err;
-            }
-            if (task._zoneDelegates === zoneDelegates) {
-                // we have to check because internally the delegate can reschedule the task.
-                this._updateTaskCount(task, 1);
-            }
-            if (task.state == scheduling) {
-                task._transitionTo(scheduled, scheduling);
-            }
-            return task;
-        };
-        Zone.prototype.scheduleMicroTask = function (source, callback, data, customSchedule) {
-            return this.scheduleTask(new ZoneTask(microTask, source, callback, data, customSchedule, null));
-        };
-        Zone.prototype.scheduleMacroTask = function (source, callback, data, customSchedule, customCancel) {
-            return this.scheduleTask(new ZoneTask(macroTask, source, callback, data, customSchedule, customCancel));
-        };
-        Zone.prototype.scheduleEventTask = function (source, callback, data, customSchedule, customCancel) {
-            return this.scheduleTask(new ZoneTask(eventTask, source, callback, data, customSchedule, customCancel));
-        };
-        Zone.prototype.cancelTask = function (task) {
-            if (task.zone != this)
-                throw new Error('A task can only be cancelled in the zone of creation! (Creation: ' +
-                    (task.zone || NO_ZONE).name + '; Execution: ' + this.name + ')');
-            task._transitionTo(canceling, scheduled, running);
-            try {
-                this._zoneDelegate.cancelTask(this, task);
-            }
-            catch (err) {
-                // if error occurs when cancelTask, transit the state to unknown
-                task._transitionTo(unknown, canceling);
-                this._zoneDelegate.handleError(this, err);
-                throw err;
-            }
-            this._updateTaskCount(task, -1);
-            task._transitionTo(notScheduled, canceling);
-            task.runCount = 0;
-            return task;
-        };
-        Zone.prototype._updateTaskCount = function (task, count) {
-            var zoneDelegates = task._zoneDelegates;
-            if (count == -1) {
-                task._zoneDelegates = null;
-            }
-            for (var i = 0; i < zoneDelegates.length; i++) {
-                zoneDelegates[i]._updateTaskCount(task.type, count);
-            }
-        };
-        return Zone;
-    }());
-    Zone.__symbol__ = __symbol__;
-    var DELEGATE_ZS = {
-        name: '',
-        onHasTask: function (delegate, _, target, hasTaskState) {
-            return delegate.hasTask(target, hasTaskState);
+    /**
+     * The {\@link FormControl}, {\@link FormGroup}, or {\@link FormArray}
+     * that backs this directive. Most properties fall through to that
+     * instance.
+     * @abstract
+     * @return {?}
+     */
+    AbstractControlDirective.prototype.control = function () { };
+    Object.defineProperty(AbstractControlDirective.prototype, "value", {
+        /**
+         * The value of the control.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.value : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "valid", {
+        /**
+         * A control is `valid` when its `status === VALID`.
+         *
+         * In order to have this status, the control must have passed all its
+         * validation checks.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.valid : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "invalid", {
+        /**
+         * A control is `invalid` when its `status === INVALID`.
+         *
+         * In order to have this status, the control must have failed
+         * at least one of its validation checks.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.invalid : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "pending", {
+        /**
+         * A control is `pending` when its `status === PENDING`.
+         *
+         * In order to have this status, the control must be in the
+         * middle of conducting a validation check.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.pending : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "disabled", {
+        /**
+         * A control is `disabled` when its `status === DISABLED`.
+         *
+         * Disabled controls are exempt from validation checks and
+         * are not included in the aggregate value of their ancestor
+         * controls.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.disabled : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "enabled", {
+        /**
+         * A control is `enabled` as long as its `status !== DISABLED`.
+         *
+         * In other words, it has a status of `VALID`, `INVALID`, or
+         * `PENDING`.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.enabled : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "errors", {
+        /**
+         * Returns any errors generated by failing validation. If there
+         * are no errors, it will return null.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.errors : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "pristine", {
+        /**
+         * A control is `pristine` if the user has not yet changed
+         * the value in the UI.
+         *
+         * Note that programmatic changes to a control's value will
+         * *not* mark it dirty.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.pristine : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "dirty", {
+        /**
+         * A control is `dirty` if the user has changed the value
+         * in the UI.
+         *
+         * Note that programmatic changes to a control's value will
+         * *not* mark it dirty.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.dirty : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "touched", {
+        /**
+         * A control is marked `touched` once the user has triggered
+         * a `blur` event on it.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.touched : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "untouched", {
+        /**
+         * A control is `untouched` if the user has not yet triggered
+         * a `blur` event on it.
+         * @return {?}
+         */
+        get: function () { return this.control ? this.control.untouched : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "statusChanges", {
+        /**
+         * Emits an event every time the validation status of the control
+         * is re-calculated.
+         * @return {?}
+         */
+        get: function () {
+            return this.control ? this.control.statusChanges : null;
         },
-        onScheduleTask: function (delegate, _, target, task) {
-            return delegate.scheduleTask(target, task);
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "valueChanges", {
+        /**
+         * Emits an event every time the value of the control changes, in
+         * the UI or programmatically.
+         * @return {?}
+         */
+        get: function () {
+            return this.control ? this.control.valueChanges : null;
         },
-        onInvokeTask: function (delegate, _, target, task, applyThis, applyArgs) { return delegate.invokeTask(target, task, applyThis, applyArgs); },
-        onCancelTask: function (delegate, _, target, task) {
-            return delegate.cancelTask(target, task);
-        }
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlDirective.prototype, "path", {
+        /**
+         * Returns an array that represents the path from the top-level form
+         * to this control. Each index is the string name of the control on
+         * that level.
+         * @return {?}
+         */
+        get: function () { return null; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * Resets the form control. This means by default:
+     *
+     * * it is marked as `pristine`
+     * * it is marked as `untouched`
+     * * value is set to null
+     *
+     * For more information, see {\@link AbstractControl}.
+     * @param {?=} value
+     * @return {?}
+     */
+    AbstractControlDirective.prototype.reset = function (value) {
+        if (value === void 0) { value = undefined; }
+        if (this.control)
+            this.control.reset(value);
     };
-    var ZoneDelegate = (function () {
-        function ZoneDelegate(zone, parentDelegate, zoneSpec) {
-            this._taskCounts = { 'microTask': 0, 'macroTask': 0, 'eventTask': 0 };
-            this.zone = zone;
-            this._parentDelegate = parentDelegate;
-            this._forkZS = zoneSpec && (zoneSpec && zoneSpec.onFork ? zoneSpec : parentDelegate._forkZS);
-            this._forkDlgt = zoneSpec && (zoneSpec.onFork ? parentDelegate : parentDelegate._forkDlgt);
-            this._forkCurrZone = zoneSpec && (zoneSpec.onFork ? this.zone : parentDelegate.zone);
-            this._interceptZS =
-                zoneSpec && (zoneSpec.onIntercept ? zoneSpec : parentDelegate._interceptZS);
-            this._interceptDlgt =
-                zoneSpec && (zoneSpec.onIntercept ? parentDelegate : parentDelegate._interceptDlgt);
-            this._interceptCurrZone =
-                zoneSpec && (zoneSpec.onIntercept ? this.zone : parentDelegate.zone);
-            this._invokeZS = zoneSpec && (zoneSpec.onInvoke ? zoneSpec : parentDelegate._invokeZS);
-            this._invokeDlgt =
-                zoneSpec && (zoneSpec.onInvoke ? parentDelegate : parentDelegate._invokeDlgt);
-            this._invokeCurrZone = zoneSpec && (zoneSpec.onInvoke ? this.zone : parentDelegate.zone);
-            this._handleErrorZS =
-                zoneSpec && (zoneSpec.onHandleError ? zoneSpec : parentDelegate._handleErrorZS);
-            this._handleErrorDlgt =
-                zoneSpec && (zoneSpec.onHandleError ? parentDelegate : parentDelegate._handleErrorDlgt);
-            this._handleErrorCurrZone =
-                zoneSpec && (zoneSpec.onHandleError ? this.zone : parentDelegate.zone);
-            this._scheduleTaskZS =
-                zoneSpec && (zoneSpec.onScheduleTask ? zoneSpec : parentDelegate._scheduleTaskZS);
-            this._scheduleTaskDlgt =
-                zoneSpec && (zoneSpec.onScheduleTask ? parentDelegate : parentDelegate._scheduleTaskDlgt);
-            this._scheduleTaskCurrZone =
-                zoneSpec && (zoneSpec.onScheduleTask ? this.zone : parentDelegate.zone);
-            this._invokeTaskZS =
-                zoneSpec && (zoneSpec.onInvokeTask ? zoneSpec : parentDelegate._invokeTaskZS);
-            this._invokeTaskDlgt =
-                zoneSpec && (zoneSpec.onInvokeTask ? parentDelegate : parentDelegate._invokeTaskDlgt);
-            this._invokeTaskCurrZone =
-                zoneSpec && (zoneSpec.onInvokeTask ? this.zone : parentDelegate.zone);
-            this._cancelTaskZS =
-                zoneSpec && (zoneSpec.onCancelTask ? zoneSpec : parentDelegate._cancelTaskZS);
-            this._cancelTaskDlgt =
-                zoneSpec && (zoneSpec.onCancelTask ? parentDelegate : parentDelegate._cancelTaskDlgt);
-            this._cancelTaskCurrZone =
-                zoneSpec && (zoneSpec.onCancelTask ? this.zone : parentDelegate.zone);
-            this._hasTaskZS = null;
-            this._hasTaskDlgt = null;
-            this._hasTaskDlgtOwner = null;
-            this._hasTaskCurrZone = null;
-            var zoneSpecHasTask = zoneSpec && zoneSpec.onHasTask;
-            var parentHasTask = parentDelegate && parentDelegate._hasTaskZS;
-            if (zoneSpecHasTask || parentHasTask) {
-                // If we need to report hasTask, than this ZS needs to do ref counting on tasks. In such
-                // a case all task related interceptors must go through this ZD. We can't short circuit it.
-                this._hasTaskZS = zoneSpecHasTask ? zoneSpec : DELEGATE_ZS;
-                this._hasTaskDlgt = parentDelegate;
-                this._hasTaskDlgtOwner = this;
-                this._hasTaskCurrZone = zone;
-                if (!zoneSpec.onScheduleTask) {
-                    this._scheduleTaskZS = DELEGATE_ZS;
-                    this._scheduleTaskDlgt = parentDelegate;
-                    this._scheduleTaskCurrZone = this.zone;
-                }
-                if (!zoneSpec.onInvokeTask) {
-                    this._invokeTaskZS = DELEGATE_ZS;
-                    this._invokeTaskDlgt = parentDelegate;
-                    this._invokeTaskCurrZone = this.zone;
-                }
-                if (!zoneSpec.onCancelTask) {
-                    this._cancelTaskZS = DELEGATE_ZS;
-                    this._cancelTaskDlgt = parentDelegate;
-                    this._cancelTaskCurrZone = this.zone;
-                }
-            }
-        }
-        ZoneDelegate.prototype.fork = function (targetZone, zoneSpec) {
-            return this._forkZS ? this._forkZS.onFork(this._forkDlgt, this.zone, targetZone, zoneSpec) :
-                new Zone(targetZone, zoneSpec);
-        };
-        ZoneDelegate.prototype.intercept = function (targetZone, callback, source) {
-            return this._interceptZS ?
-                this._interceptZS.onIntercept(this._interceptDlgt, this._interceptCurrZone, targetZone, callback, source) :
-                callback;
-        };
-        ZoneDelegate.prototype.invoke = function (targetZone, callback, applyThis, applyArgs, source) {
-            return this._invokeZS ?
-                this._invokeZS.onInvoke(this._invokeDlgt, this._invokeCurrZone, targetZone, callback, applyThis, applyArgs, source) :
-                callback.apply(applyThis, applyArgs);
-        };
-        ZoneDelegate.prototype.handleError = function (targetZone, error) {
-            return this._handleErrorZS ?
-                this._handleErrorZS.onHandleError(this._handleErrorDlgt, this._handleErrorCurrZone, targetZone, error) :
-                true;
-        };
-        ZoneDelegate.prototype.scheduleTask = function (targetZone, task) {
-            var returnTask = task;
-            if (this._scheduleTaskZS) {
-                if (this._hasTaskZS) {
-                    returnTask._zoneDelegates.push(this._hasTaskDlgtOwner);
-                }
-                returnTask = this._scheduleTaskZS.onScheduleTask(this._scheduleTaskDlgt, this._scheduleTaskCurrZone, targetZone, task);
-                if (!returnTask)
-                    returnTask = task;
-            }
-            else {
-                if (task.scheduleFn) {
-                    task.scheduleFn(task);
-                }
-                else if (task.type == microTask) {
-                    scheduleMicroTask(task);
-                }
-                else {
-                    throw new Error('Task is missing scheduleFn.');
-                }
-            }
-            return returnTask;
-        };
-        ZoneDelegate.prototype.invokeTask = function (targetZone, task, applyThis, applyArgs) {
-            return this._invokeTaskZS ?
-                this._invokeTaskZS.onInvokeTask(this._invokeTaskDlgt, this._invokeTaskCurrZone, targetZone, task, applyThis, applyArgs) :
-                task.callback.apply(applyThis, applyArgs);
-        };
-        ZoneDelegate.prototype.cancelTask = function (targetZone, task) {
-            var value;
-            if (this._cancelTaskZS) {
-                value = this._cancelTaskZS.onCancelTask(this._cancelTaskDlgt, this._cancelTaskCurrZone, targetZone, task);
-            }
-            else {
-                if (!task.cancelFn) {
-                    throw Error('Task is not cancelable');
-                }
-                value = task.cancelFn(task);
-            }
-            return value;
-        };
-        ZoneDelegate.prototype.hasTask = function (targetZone, isEmpty) {
-            // hasTask should not throw error so other ZoneDelegate
-            // can still trigger hasTask callback
-            try {
-                return this._hasTaskZS &&
-                    this._hasTaskZS.onHasTask(this._hasTaskDlgt, this._hasTaskCurrZone, targetZone, isEmpty);
-            }
-            catch (err) {
-                this.handleError(targetZone, err);
-            }
-        };
-        ZoneDelegate.prototype._updateTaskCount = function (type, count) {
-            var counts = this._taskCounts;
-            var prev = counts[type];
-            var next = counts[type] = prev + count;
-            if (next < 0) {
-                throw new Error('More tasks executed then were scheduled.');
-            }
-            if (prev == 0 || next == 0) {
-                var isEmpty = {
-                    microTask: counts.microTask > 0,
-                    macroTask: counts.macroTask > 0,
-                    eventTask: counts.eventTask > 0,
-                    change: type
-                };
-                this.hasTask(this.zone, isEmpty);
-            }
-        };
-        return ZoneDelegate;
-    }());
-    var ZoneTask = (function () {
-        function ZoneTask(type, source, callback, options, scheduleFn, cancelFn) {
-            this._zone = null;
-            this.runCount = 0;
-            this._zoneDelegates = null;
-            this._state = 'notScheduled';
-            this.type = type;
-            this.source = source;
-            this.data = options;
-            this.scheduleFn = scheduleFn;
-            this.cancelFn = cancelFn;
-            this.callback = callback;
-            var self = this;
-            if (type === eventTask && options && options.isUsingGlobalCallback) {
-                this.invoke = ZoneTask.invokeTask;
-            }
-            else {
-                this.invoke = function () {
-                    return ZoneTask.invokeTask.apply(global, [self, this, arguments]);
-                };
-            }
-        }
-        ZoneTask.invokeTask = function (task, target, args) {
-            if (!task) {
-                task = this;
-            }
-            _numberOfNestedTaskFrames++;
-            try {
-                task.runCount++;
-                return task.zone.runTask(task, target, args);
-            }
-            finally {
-                if (_numberOfNestedTaskFrames == 1) {
-                    drainMicroTaskQueue();
-                }
-                _numberOfNestedTaskFrames--;
-            }
-        };
-        Object.defineProperty(ZoneTask.prototype, "zone", {
-            get: function () {
-                return this._zone;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(ZoneTask.prototype, "state", {
-            get: function () {
-                return this._state;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        ZoneTask.prototype.cancelScheduleRequest = function () {
-            this._transitionTo(notScheduled, scheduling);
-        };
-        ZoneTask.prototype._transitionTo = function (toState, fromState1, fromState2) {
-            if (this._state === fromState1 || this._state === fromState2) {
-                this._state = toState;
-                if (toState == notScheduled) {
-                    this._zoneDelegates = null;
-                }
-            }
-            else {
-                throw new Error(this.type + " '" + this.source + "': can not transition to '" + toState + "', expecting state '" + fromState1 + "'" + (fromState2 ?
-                    ' or \'' + fromState2 + '\'' :
-                    '') + ", was '" + this._state + "'.");
-            }
-        };
-        ZoneTask.prototype.toString = function () {
-            if (this.data && typeof this.data.handleId !== 'undefined') {
-                return this.data.handleId;
-            }
-            else {
-                return Object.prototype.toString.call(this);
-            }
-        };
-        // add toJSON method to prevent cyclic error when
-        // call JSON.stringify(zoneTask)
-        ZoneTask.prototype.toJSON = function () {
-            return {
-                type: this.type,
-                state: this.state,
-                source: this.source,
-                zone: this.zone.name,
-                invoke: this.invoke,
-                scheduleFn: this.scheduleFn,
-                cancelFn: this.cancelFn,
-                runCount: this.runCount,
-                callback: this.callback
-            };
-        };
-        return ZoneTask;
-    }());
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    ///  MICROTASK QUEUE
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    var symbolSetTimeout = __symbol__('setTimeout');
-    var symbolPromise = __symbol__('Promise');
-    var symbolThen = __symbol__('then');
-    var _microTaskQueue = [];
-    var _isDrainingMicrotaskQueue = false;
-    function scheduleMicroTask(task) {
-        // if we are not running in any task, and there has not been anything scheduled
-        // we must bootstrap the initial task creation by manually scheduling the drain
-        if (_numberOfNestedTaskFrames === 0 && _microTaskQueue.length === 0) {
-            // We are not running in Task, so we need to kickstart the microtask queue.
-            if (global[symbolPromise]) {
-                global[symbolPromise].resolve(0)[symbolThen](drainMicroTaskQueue);
-            }
-            else {
-                global[symbolSetTimeout](drainMicroTaskQueue, 0);
-            }
-        }
-        task && _microTaskQueue.push(task);
-    }
-    function drainMicroTaskQueue() {
-        if (!_isDrainingMicrotaskQueue) {
-            _isDrainingMicrotaskQueue = true;
-            while (_microTaskQueue.length) {
-                var queue = _microTaskQueue;
-                _microTaskQueue = [];
-                for (var i = 0; i < queue.length; i++) {
-                    var task = queue[i];
-                    try {
-                        task.zone.runTask(task, null, null);
-                    }
-                    catch (error) {
-                        _api.onUnhandledError(error);
-                    }
-                }
-            }
-            var showError = !Zone[__symbol__('ignoreConsoleErrorUncaughtError')];
-            _api.microtaskDrainDone();
-            _isDrainingMicrotaskQueue = false;
-        }
-    }
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    ///  BOOTSTRAP
-    //////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////
-    var NO_ZONE = { name: 'NO ZONE' };
-    var notScheduled = 'notScheduled', scheduling = 'scheduling', scheduled = 'scheduled', running = 'running', canceling = 'canceling', unknown = 'unknown';
-    var microTask = 'microTask', macroTask = 'macroTask', eventTask = 'eventTask';
-    var patches = {};
-    var _api = {
-        symbol: __symbol__,
-        currentZoneFrame: function () { return _currentZoneFrame; },
-        onUnhandledError: noop,
-        microtaskDrainDone: noop,
-        scheduleMicroTask: scheduleMicroTask,
-        showUncaughtError: function () { return !Zone[__symbol__('ignoreConsoleErrorUncaughtError')]; },
-        patchEventTarget: function () { return []; },
-        patchOnProperties: noop,
-        patchMethod: function () { return noop; },
+    /**
+     * Returns true if the control with the given path has the error specified. Otherwise
+     * returns false.
+     *
+     * If no path is given, it checks for the error on the present control.
+     * @param {?} errorCode
+     * @param {?=} path
+     * @return {?}
+     */
+    AbstractControlDirective.prototype.hasError = function (errorCode, path) {
+        return this.control ? this.control.hasError(errorCode, path) : false;
     };
-    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
-    var _currentTask = null;
-    var _numberOfNestedTaskFrames = 0;
-    function noop() { }
-    function __symbol__(name) {
-        return '__zone_symbol__' + name;
-    }
-    performanceMeasure('Zone', 'Zone');
-    return global['Zone'] = Zone;
-})(typeof window !== 'undefined' && window || typeof self !== 'undefined' && self || global);
-
-/**
- * @license
- * Copyright Google Inc. All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-Zone.__load_patch('ZoneAwarePromise', function (global, Zone, api) {
-    var __symbol__ = api.symbol;
-    var _uncaughtPromiseErrors = [];
-    var symbolPromise = __symbol__('Promise');
-    var symbolThen = __symbol__('then');
-    api.onUnhandledError = function (e) {
-        if (api.showUncaughtError()) {
-            var rejection = e && e.rejection;
-            if (rejection) {
-                console.error('Unhandled Promise rejection:', rejection instanceof Error ? rejection.message : rejection, '; Zone:', e.zone.name, '; Task:', e.task && e.task.source, '; Value:', rejection, rejection instanceof Error ? rejection.stack : undefined);
-            }
-            else {
-                console.error(e);
-            }
-        }
+    /**
+     * Returns error data if the control with the given path has the error specified. Otherwise
+     * returns null or undefined.
+     *
+     * If no path is given, it checks for the error on the present control.
+     * @param {?} errorCode
+     * @param {?=} path
+     * @return {?}
+     */
+    AbstractControlDirective.prototype.getError = function (errorCode, path) {
+        return this.control ? this.control.getError(errorCode, path) : null;
     };
-    api.microtaskDrainDone = function () {
-        while (_uncaughtPromiseErrors.length) {
-            var _loop_1 = function () {
-                var uncaughtPromiseError = _uncaughtPromiseErrors.shift();
-                try {
-                    uncaughtPromiseError.zone.runGuarded(function () {
-                        throw uncaughtPromiseError;
-                    });
-                }
-                catch (error) {
-                    handleUnhandledRejection(error);
-                }
-            };
-            while (_uncaughtPromiseErrors.length) {
-                _loop_1();
-            }
-        }
-    };
-    function handleUnhandledRejection(e) {
-        api.onUnhandledError(e);
-        try {
-            var handler = Zone[__symbol__('unhandledPromiseRejectionHandler')];
-            if (handler && typeof handler === 'function') {
-                handler.apply(this, [e]);
-            }
-        }
-        catch (err) {
-        }
-    }
-    function isThenable(value) {
-        return value && value.then;
-    }
-    function forwardResolution(value) {
-        return value;
-    }
-    function forwardRejection(rejection) {
-        return ZoneAwarePromise.reject(rejection);
-    }
-    var symbolState = __symbol__('state');
-    var symbolValue = __symbol__('value');
-    var source = 'Promise.then';
-    var UNRESOLVED = null;
-    var RESOLVED = true;
-    var REJECTED = false;
-    var REJECTED_NO_CATCH = 0;
-    function makeResolver(promise, state) {
-        return function (v) {
-            try {
-                resolvePromise(promise, state, v);
-            }
-            catch (err) {
-                resolvePromise(promise, false, err);
-            }
-            // Do not return value or you will break the Promise spec.
-        };
-    }
-    var once = function () {
-        var wasCalled = false;
-        return function wrapper(wrappedFunction) {
-            return function () {
-                if (wasCalled) {
-                    return;
-                }
-                wasCalled = true;
-                wrappedFunction.apply(null, arguments);
-            };
-        };
-    };
-    // Promise Resolution
-    function resolvePromise(promise, state, value) {
-        var onceWrapper = once();
-        if (promise === value) {
-            throw new TypeError('Promise resolved with itself');
-        }
-        if (promise[symbolState] === UNRESOLVED) {
-            // should only get value.then once based on promise spec.
-            var then = null;
-            try {
-                if (typeof value === 'object' || typeof value === 'function') {
-                    then = value && value.then;
-                }
-            }
-            catch (err) {
-                onceWrapper(function () {
-                    resolvePromise(promise, false, err);
-                })();
-                return promise;
-            }
-            // if (value instanceof ZoneAwarePromise) {
-            if (state !== REJECTED && value instanceof ZoneAwarePromise &&
-                value.hasOwnProperty(symbolState) && value.hasOwnProperty(symbolValue) &&
-                value[symbolState] !== UNRESOLVED) {
-                clearRejectedNoCatch(value);
-                resolvePromise(promise, value[symbolState], value[symbolValue]);
-            }
-            else if (state !== REJECTED && typeof then === 'function') {
-                try {
-                    then.apply(value, [
-                        onceWrapper(makeResolver(promise, state)), onceWrapper(makeResolver(promise, false))
-                    ]);
-                }
-                catch (err) {
-                    onceWrapper(function () {
-                        resolvePromise(promise, false, err);
-                    })();
-                }
-            }
-            else {
-                promise[symbolState] = state;
-                var queue = promise[symbolValue];
-                promise[symbolValue] = value;
-                // record task information in value when error occurs, so we can
-                // do some additional work such as render longStackTrace
-                if (state === REJECTED && value instanceof Error) {
-                    value[__symbol__('currentTask')] = Zone.currentTask;
-                }
-                for (var i = 0; i < queue.length;) {
-                    scheduleResolveOrReject(promise, queue[i++], queue[i++], queue[i++], queue[i++]);
-                }
-                if (queue.length == 0 && state == REJECTED) {
-                    promise[symbolState] = REJECTED_NO_CATCH;
-                    try {
-                        throw new Error('Uncaught (in promise): ' + value +
-                            (value && value.stack ? '\n' + value.stack : ''));
-                    }
-                    catch (err) {
-                        var error_1 = err;
-                        error_1.rejection = value;
-                        error_1.promise = promise;
-                        error_1.zone = Zone.current;
-                        error_1.task = Zone.currentTask;
-                        _uncaughtPromiseErrors.push(error_1);
-                        api.scheduleMicroTask(); // to make sure that it is running
-                    }
-                }
-            }
-        }
-        // Resolving an already resolved promise is a noop.
-        return promise;
-    }
-    function clearRejectedNoCatch(promise) {
-        if (promise[symbolState] === REJECTED_NO_CATCH) {
-            // if the promise is rejected no catch status
-            // and queue.length > 0, means there is a error handler
-            // here to handle the rejected promise, we should trigger
-            // windows.rejectionhandled eventHandler or nodejs rejectionHandled
-            // eventHandler
-            try {
-                var handler = Zone[__symbol__('rejectionHandledHandler')];
-                if (handler && typeof handler === 'function') {
-                    handler.apply(this, [{ rejection: promise[symbolValue], promise: promise }]);
-                }
-            }
-            catch (err) {
-            }
-            promise[symbolState] = REJECTED;
-            for (var i = 0; i < _uncaughtPromiseErrors.length; i++) {
-                if (promise === _uncaughtPromiseErrors[i].promise) {
-                    _uncaughtPromiseErrors.splice(i, 1);
-                }
-            }
-        }
-    }
-    function scheduleResolveOrReject(promise, zone, chainPromise, onFulfilled, onRejected) {
-        clearRejectedNoCatch(promise);
-        var delegate = promise[symbolState] ?
-            (typeof onFulfilled === 'function') ? onFulfilled : forwardResolution :
-            (typeof onRejected === 'function') ? onRejected : forwardRejection;
-        zone.scheduleMicroTask(source, function () {
-            try {
-                resolvePromise(chainPromise, true, zone.run(delegate, undefined, [promise[symbolValue]]));
-            }
-            catch (error) {
-                resolvePromise(chainPromise, false, error);
-            }
-        });
-    }
-    var ZoneAwarePromise = (function () {
-        function ZoneAwarePromise(executor) {
-            var promise = this;
-            if (!(promise instanceof ZoneAwarePromise)) {
-                throw new Error('Must be an instanceof Promise.');
-            }
-            promise[symbolState] = UNRESOLVED;
-            promise[symbolValue] = []; // queue;
-            try {
-                executor && executor(makeResolver(promise, RESOLVED), makeResolver(promise, REJECTED));
-            }
-            catch (error) {
-                resolvePromise(promise, false, error);
-            }
-        }
-        ZoneAwarePromise.toString = function () {
-            return 'function ZoneAwarePromise() { [native code] }';
-        };
-        ZoneAwarePromise.resolve = function (value) {
-            return resolvePromise(new this(null), RESOLVED, value);
-        };
-        ZoneAwarePromise.reject = function (error) {
-            return resolvePromise(new this(null), REJECTED, error);
-        };
-        ZoneAwarePromise.race = function (values) {
-            var resolve;
-            var reject;
-            var promise = new this(function (res, rej) {
-                _a = [res, rej], resolve = _a[0], reject = _a[1];
-                var _a;
-            });
-            function onResolve(value) {
-                promise && (promise = null || resolve(value));
-            }
-            function onReject(error) {
-                promise && (promise = null || reject(error));
-            }
-            for (var _i = 0, values_1 = values; _i < values_1.length; _i++) {
-                var value = values_1[_i];
-                if (!isThenable(value)) {
-                    value = this.resolve(value);
-                }
-                value.then(onResolve, onReject);
-            }
-            return promise;
-        };
-        ZoneAwarePromise.all = function (values) {
-            var resolve;
-            var reject;
-            var promise = new this(function (res, rej) {
-                resolve = res;
-                reject = rej;
-            });
-            var count = 0;
-            var resolvedValues = [];
-            for (var _i = 0, values_2 = values; _i < values_2.length; _i++) {
-                var value = values_2[_i];
-                if (!isThenable(value)) {
-                    value = this.resolve(value);
-                }
-                value.then((function (index) { return function (value) {
-                    resolvedValues[index] = value;
-                    count--;
-                    if (!count) {
-                        resolve(resolvedValues);
-                    }
-                }; })(count), reject);
-                count++;
-            }
-            if (!count)
-                resolve(resolvedValues);
-            return promise;
-        };
-        ZoneAwarePromise.prototype.then = function (onFulfilled, onRejected) {
-            var chainPromise = new this.constructor(null);
-            var zone = Zone.current;
-            if (this[symbolState] == UNRESOLVED) {
-                this[symbolValue].push(zone, chainPromise, onFulfilled, onRejected);
-            }
-            else {
-                scheduleResolveOrReject(this, zone, chainPromise, onFulfilled, onRejected);
-            }
-            return chainPromise;
-        };
-        ZoneAwarePromise.prototype.catch = function (onRejected) {
-            return this.then(null, onRejected);
-        };
-        return ZoneAwarePromise;
-    }());
-    // Protect against aggressive optimizers dropping seemingly unused properties.
-    // E.g. Closure Compiler in advanced mode.
-    ZoneAwarePromise['resolve'] = ZoneAwarePromise.resolve;
-    ZoneAwarePromise['reject'] = ZoneAwarePromise.reject;
-    ZoneAwarePromise['race'] = ZoneAwarePromise.race;
-    ZoneAwarePromise['all'] = ZoneAwarePromise.all;
-    var NativePromise = global[symbolPromise] = global['Promise'];
-    global['Promise'] = ZoneAwarePromise;
-    var symbolThenPatched = __symbol__('thenPatched');
-    function patchThen(Ctor) {
-        var proto = Ctor.prototype;
-        var originalThen = proto.then;
-        // Keep a reference to the original method.
-        proto[symbolThen] = originalThen;
-        // check Ctor.prototype.then propertyDescritor is writable or not
-        // in meteor env, writable is false, we have to make it to be true.
-        var prop = Object.getOwnPropertyDescriptor(Ctor.prototype, 'then');
-        if (prop && prop.writable === false && prop.configurable) {
-            Object.defineProperty(Ctor.prototype, 'then', { writable: true });
-        }
-        Ctor.prototype.then = function (onResolve, onReject) {
-            var _this = this;
-            var wrapped = new ZoneAwarePromise(function (resolve, reject) {
-                originalThen.call(_this, resolve, reject);
-            });
-            return wrapped.then(onResolve, onReject);
-        };
-        Ctor[symbolThenPatched] = true;
-    }
-    function zoneify(fn) {
-        return function () {
-            var resultPromise = fn.apply(this, arguments);
-            if (resultPromise instanceof ZoneAwarePromise) {
-                return resultPromise;
-            }
-            var ctor = resultPromise.constructor;
-            if (!ctor[symbolThenPatched]) {
-                patchThen(ctor);
-            }
-            return resultPromise;
-        };
-    }
-    if (NativePromise) {
-        patchThen(NativePromise);
-        var fetch_1 = global['fetch'];
-        if (typeof fetch_1 == 'function') {
-            global['fetch'] = zoneify(fetch_1);
-        }
-    }
-    // This is not part of public API, but it is useful for tests, so we expose it.
-    Promise[Zone.__symbol__('uncaughtPromiseErrors')] = _uncaughtPromiseErrors;
-    return ZoneAwarePromise;
-});
-
+    return AbstractControlDirective;
+}());
 /**
  * @license
  * Copyright Google Inc. All Rights Reserved.
@@ -56560,1020 +58734,1755 @@ Zone.__load_patch('ZoneAwarePromise', function (global, Zone, api) {
  * found in the LICENSE file at https://angular.io/license
  */
 /**
- * Suppress closure compiler errors about unknown 'Zone' variable
- * @fileoverview
- * @suppress {undefinedVars,globalThis}
+ * A directive that contains multiple {\@link NgControl}s.
+ *
+ * Only used by the forms module.
+ *
+ * \@stable
+ * @abstract
  */
-var zoneSymbol = Zone.__symbol__;
-var _global = typeof window === 'object' && window || typeof self === 'object' && self || global;
-function bindArguments(args, source) {
-    for (var i = args.length - 1; i >= 0; i--) {
-        if (typeof args[i] === 'function') {
-            args[i] = Zone.current.wrap(args[i], source + '_' + i);
-        }
+var ControlContainer = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](ControlContainer, _super);
+    function ControlContainer() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    return args;
+    Object.defineProperty(ControlContainer.prototype, "formDirective", {
+        /**
+         * Get the form to which this container belongs.
+         * @return {?}
+         */
+        get: function () { return null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ControlContainer.prototype, "path", {
+        /**
+         * Get the path to this container.
+         * @return {?}
+         */
+        get: function () { return null; },
+        enumerable: true,
+        configurable: true
+    });
+    return ControlContainer;
+}(AbstractControlDirective));
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @param {?} value
+ * @return {?}
+ */
+function isEmptyInputValue(value) {
+    // we don't check for string here so it also works with arrays
+    return value == null || value.length === 0;
 }
-function patchPrototype(prototype, fnNames) {
-    var source = prototype.constructor['name'];
-    var _loop_1 = function (i) {
-        var name_1 = fnNames[i];
-        var delegate = prototype[name_1];
-        if (delegate) {
-            prototype[name_1] = (function (delegate) {
-                var patched = function () {
-                    return delegate.apply(this, bindArguments(arguments, source + '.' + name_1));
-                };
-                attachOriginToPatched(patched, delegate);
-                return patched;
-            })(delegate);
-        }
+/**
+ * Providers for validators to be used for {\@link FormControl}s in a form.
+ *
+ * Provide this using `multi: true` to add validators.
+ *
+ * \@stable
+ */
+var NG_VALIDATORS = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["InjectionToken"]('NgValidators');
+/**
+ * Providers for asynchronous validators to be used for {\@link FormControl}s
+ * in a form.
+ *
+ * Provide this using `multi: true` to add validators.
+ *
+ * See {\@link NG_VALIDATORS} for more details.
+ *
+ * \@stable
+ */
+var NG_ASYNC_VALIDATORS = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["InjectionToken"]('NgAsyncValidators');
+var EMAIL_REGEXP = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+/**
+ * Provides a set of validators used by form controls.
+ *
+ * A validator is a function that processes a {\@link FormControl} or collection of
+ * controls and returns a map of errors. A null map means that validation has passed.
+ *
+ * ### Example
+ *
+ * ```typescript
+ * var loginControl = new FormControl("", Validators.required)
+ * ```
+ *
+ * \@stable
+ */
+var Validators = (function () {
+    function Validators() {
+    }
+    /**
+     * Validator that requires controls to have a value greater than a number.
+     * @param {?} min
+     * @return {?}
+     */
+    Validators.min = function (min) {
+        return function (control) {
+            if (isEmptyInputValue(control.value) || isEmptyInputValue(min)) {
+                return null; // don't validate empty values to allow optional controls
+            }
+            var /** @type {?} */ value = parseFloat(control.value);
+            // Controls with NaN values after parsing should be treated as not having a
+            // minimum, per the HTML forms spec: https://www.w3.org/TR/html5/forms.html#attr-input-min
+            return !isNaN(value) && value < min ? { 'min': { 'min': min, 'actual': control.value } } : null;
+        };
     };
-    for (var i = 0; i < fnNames.length; i++) {
-        _loop_1(i);
-    }
-}
-var isWebWorker = (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope);
-// Make sure to access `process` through `_global` so that WebPack does not accidently browserify
-// this code.
-var isNode = (!('nw' in _global) && typeof _global.process !== 'undefined' &&
-    {}.toString.call(_global.process) === '[object process]');
-var isBrowser = !isNode && !isWebWorker && !!(typeof window !== 'undefined' && window['HTMLElement']);
-// we are in electron of nw, so we are both browser and nodejs
-// Make sure to access `process` through `_global` so that WebPack does not accidently browserify
-// this code.
-var isMix = typeof _global.process !== 'undefined' &&
-    {}.toString.call(_global.process) === '[object process]' && !isWebWorker &&
-    !!(typeof window !== 'undefined' && window['HTMLElement']);
-function patchProperty(obj, prop, prototype) {
-    var desc = Object.getOwnPropertyDescriptor(obj, prop);
-    if (!desc && prototype) {
-        // when patch window object, use prototype to check prop exist or not
-        var prototypeDesc = Object.getOwnPropertyDescriptor(prototype, prop);
-        if (prototypeDesc) {
-            desc = { enumerable: true, configurable: true };
-        }
-    }
-    // if the descriptor not exists or is not configurable
-    // just return
-    if (!desc || !desc.configurable) {
-        return;
-    }
-    // A property descriptor cannot have getter/setter and be writable
-    // deleting the writable and value properties avoids this error:
-    //
-    // TypeError: property descriptors must not specify a value or be writable when a
-    // getter or setter has been specified
-    delete desc.writable;
-    delete desc.value;
-    var originalDescGet = desc.get;
-    // substr(2) cuz 'onclick' -> 'click', etc
-    var eventName = prop.substr(2);
-    var _prop = zoneSymbol('_' + prop);
-    desc.set = function (newValue) {
-        // in some of windows's onproperty callback, this is undefined
-        // so we need to check it
-        var target = this;
-        if (!target && obj === _global) {
-            target = _global;
-        }
-        if (!target) {
-            return;
-        }
-        var previousValue = target[_prop];
-        if (previousValue) {
-            target.removeEventListener(eventName, previousValue);
-        }
-        if (typeof newValue === 'function') {
-            var wrapFn = function (event) {
-                var result = newValue.apply(this, arguments);
-                if (result != undefined && !result) {
-                    event.preventDefault();
-                }
-                return result;
-            };
-            target[_prop] = wrapFn;
-            target.addEventListener(eventName, wrapFn, false);
+    /**
+     * Validator that requires controls to have a value less than a number.
+     * @param {?} max
+     * @return {?}
+     */
+    Validators.max = function (max) {
+        return function (control) {
+            if (isEmptyInputValue(control.value) || isEmptyInputValue(max)) {
+                return null; // don't validate empty values to allow optional controls
+            }
+            var /** @type {?} */ value = parseFloat(control.value);
+            // Controls with NaN values after parsing should be treated as not having a
+            // maximum, per the HTML forms spec: https://www.w3.org/TR/html5/forms.html#attr-input-max
+            return !isNaN(value) && value > max ? { 'max': { 'max': max, 'actual': control.value } } : null;
+        };
+    };
+    /**
+     * Validator that requires controls to have a non-empty value.
+     * @param {?} control
+     * @return {?}
+     */
+    Validators.required = function (control) {
+        return isEmptyInputValue(control.value) ? { 'required': true } : null;
+    };
+    /**
+     * Validator that requires control value to be true.
+     * @param {?} control
+     * @return {?}
+     */
+    Validators.requiredTrue = function (control) {
+        return control.value === true ? null : { 'required': true };
+    };
+    /**
+     * Validator that performs email validation.
+     * @param {?} control
+     * @return {?}
+     */
+    Validators.email = function (control) {
+        return EMAIL_REGEXP.test(control.value) ? null : { 'email': true };
+    };
+    /**
+     * Validator that requires controls to have a value of a minimum length.
+     * @param {?} minLength
+     * @return {?}
+     */
+    Validators.minLength = function (minLength) {
+        return function (control) {
+            if (isEmptyInputValue(control.value)) {
+                return null; // don't validate empty values to allow optional controls
+            }
+            var /** @type {?} */ length = control.value ? control.value.length : 0;
+            return length < minLength ?
+                { 'minlength': { 'requiredLength': minLength, 'actualLength': length } } :
+                null;
+        };
+    };
+    /**
+     * Validator that requires controls to have a value of a maximum length.
+     * @param {?} maxLength
+     * @return {?}
+     */
+    Validators.maxLength = function (maxLength) {
+        return function (control) {
+            var /** @type {?} */ length = control.value ? control.value.length : 0;
+            return length > maxLength ?
+                { 'maxlength': { 'requiredLength': maxLength, 'actualLength': length } } :
+                null;
+        };
+    };
+    /**
+     * Validator that requires a control to match a regex to its value.
+     * @param {?} pattern
+     * @return {?}
+     */
+    Validators.pattern = function (pattern) {
+        if (!pattern)
+            return Validators.nullValidator;
+        var /** @type {?} */ regex;
+        var /** @type {?} */ regexStr;
+        if (typeof pattern === 'string') {
+            regexStr = "^" + pattern + "$";
+            regex = new RegExp(regexStr);
         }
         else {
-            target[_prop] = null;
+            regexStr = pattern.toString();
+            regex = pattern;
+        }
+        return function (control) {
+            if (isEmptyInputValue(control.value)) {
+                return null; // don't validate empty values to allow optional controls
+            }
+            var /** @type {?} */ value = control.value;
+            return regex.test(value) ? null :
+                { 'pattern': { 'requiredPattern': regexStr, 'actualValue': value } };
+        };
+    };
+    /**
+     * No-op validator.
+     * @param {?} c
+     * @return {?}
+     */
+    Validators.nullValidator = function (c) { return null; };
+    /**
+     * @param {?} validators
+     * @return {?}
+     */
+    Validators.compose = function (validators) {
+        if (!validators)
+            return null;
+        var /** @type {?} */ presentValidators = (validators.filter(isPresent));
+        if (presentValidators.length == 0)
+            return null;
+        return function (control) {
+            return _mergeErrors(_executeValidators(control, presentValidators));
+        };
+    };
+    /**
+     * @param {?} validators
+     * @return {?}
+     */
+    Validators.composeAsync = function (validators) {
+        if (!validators)
+            return null;
+        var /** @type {?} */ presentValidators = (validators.filter(isPresent));
+        if (presentValidators.length == 0)
+            return null;
+        return function (control) {
+            var /** @type {?} */ observables = _executeAsyncValidators(control, presentValidators).map(toObservable);
+            return __WEBPACK_IMPORTED_MODULE_4_rxjs_operator_map__["map"].call(Object(__WEBPACK_IMPORTED_MODULE_2_rxjs_observable_forkJoin__["forkJoin"])(observables), _mergeErrors);
+        };
+    };
+    return Validators;
+}());
+/**
+ * @param {?} o
+ * @return {?}
+ */
+function isPresent(o) {
+    return o != null;
+}
+/**
+ * @param {?} r
+ * @return {?}
+ */
+function toObservable(r) {
+    var /** @type {?} */ obs = Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["ɵisPromise"])(r) ? Object(__WEBPACK_IMPORTED_MODULE_3_rxjs_observable_fromPromise__["fromPromise"])(r) : r;
+    if (!(Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["ɵisObservable"])(obs))) {
+        throw new Error("Expected validator to return Promise or Observable.");
+    }
+    return obs;
+}
+/**
+ * @param {?} control
+ * @param {?} validators
+ * @return {?}
+ */
+function _executeValidators(control, validators) {
+    return validators.map(function (v) { return v(control); });
+}
+/**
+ * @param {?} control
+ * @param {?} validators
+ * @return {?}
+ */
+function _executeAsyncValidators(control, validators) {
+    return validators.map(function (v) { return v(control); });
+}
+/**
+ * @param {?} arrayOfErrors
+ * @return {?}
+ */
+function _mergeErrors(arrayOfErrors) {
+    var /** @type {?} */ res = arrayOfErrors.reduce(function (res, errors) {
+        return errors != null ? Object.assign({}, /** @type {?} */ ((res)), errors) : ((res));
+    }, {});
+    return Object.keys(res).length === 0 ? null : res;
+}
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * Used to provide a {\@link ControlValueAccessor} for form controls.
+ *
+ * See {\@link DefaultValueAccessor} for how to implement one.
+ * \@stable
+ */
+var NG_VALUE_ACCESSOR = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["InjectionToken"]('NgValueAccessor');
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var CHECKBOX_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return CheckboxControlValueAccessor; }),
+    multi: true,
+};
+/**
+ * The accessor for writing a value and listening to changes on a checkbox input element.
+ *
+ *  ### Example
+ *  ```
+ *  <input type="checkbox" name="rememberLogin" ngModel>
+ *  ```
+ *
+ *  \@stable
+ */
+var CheckboxControlValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     */
+    function CheckboxControlValueAccessor(_renderer, _elementRef) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        this.onChange = function (_) { };
+        this.onTouched = function () { };
+    }
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    CheckboxControlValueAccessor.prototype.writeValue = function (value) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'checked', value);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    CheckboxControlValueAccessor.prototype.registerOnChange = function (fn) { this.onChange = fn; };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    CheckboxControlValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    CheckboxControlValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    return CheckboxControlValueAccessor;
+}());
+CheckboxControlValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'input[type=checkbox][formControlName],input[type=checkbox][formControl],input[type=checkbox][ngModel]',
+                host: { '(change)': 'onChange($event.target.checked)', '(blur)': 'onTouched()' },
+                providers: [CHECKBOX_VALUE_ACCESSOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+CheckboxControlValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+]; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var DEFAULT_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return DefaultValueAccessor; }),
+    multi: true
+};
+/**
+ * We must check whether the agent is Android because composition events
+ * behave differently between iOS and Android.
+ * @return {?}
+ */
+function _isAndroid() {
+    var /** @type {?} */ userAgent = Object(__WEBPACK_IMPORTED_MODULE_5__angular_platform_browser__["ɵgetDOM"])() ? Object(__WEBPACK_IMPORTED_MODULE_5__angular_platform_browser__["ɵgetDOM"])().getUserAgent() : '';
+    return /android (\d+)/.test(userAgent.toLowerCase());
+}
+/**
+ * Turn this mode on if you want form directives to buffer IME input until compositionend
+ * \@experimental
+ */
+var COMPOSITION_BUFFER_MODE = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["InjectionToken"]('CompositionEventMode');
+/**
+ * The default accessor for writing a value and listening to changes that is used by the
+ * {\@link NgModel}, {\@link FormControlDirective}, and {\@link FormControlName} directives.
+ *
+ *  ### Example
+ *  ```
+ *  <input type="text" name="searchQuery" ngModel>
+ *  ```
+ *
+ *  \@stable
+ */
+var DefaultValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     * @param {?} _compositionMode
+     */
+    function DefaultValueAccessor(_renderer, _elementRef, _compositionMode) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        this._compositionMode = _compositionMode;
+        this.onChange = function (_) { };
+        this.onTouched = function () { };
+        /**
+         * Whether the user is creating a composition string (IME events).
+         */
+        this._composing = false;
+        if (this._compositionMode == null) {
+            this._compositionMode = !_isAndroid();
+        }
+    }
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype.writeValue = function (value) {
+        var /** @type {?} */ normalizedValue = value == null ? '' : value;
+        this._renderer.setProperty(this._elementRef.nativeElement, 'value', normalizedValue);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype.registerOnChange = function (fn) { this.onChange = fn; };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype._handleInput = function (value) {
+        if (!this._compositionMode || (this._compositionMode && !this._composing)) {
+            this.onChange(value);
         }
     };
-    // The getter would return undefined for unassigned properties but the default value of an
-    // unassigned property is null
-    desc.get = function () {
-        // in some of windows's onproperty callback, this is undefined
-        // so we need to check it
-        var target = this;
-        if (!target && obj === _global) {
-            target = _global;
-        }
-        if (!target) {
-            return null;
-        }
-        if (target.hasOwnProperty(_prop)) {
-            return target[_prop];
-        }
-        else if (originalDescGet) {
-            // result will be null when use inline event attribute,
-            // such as <button onclick="func();">OK</button>
-            // because the onclick function is internal raw uncompiled handler
-            // the onclick will be evaluated when first time event was triggered or
-            // the property is accessed, https://github.com/angular/zone.js/issues/525
-            // so we should use original native get to retrieve the handler
-            var value = originalDescGet && originalDescGet.apply(this);
-            if (value) {
-                desc.set.apply(this, [value]);
-                if (typeof target['removeAttribute'] === 'function') {
-                    target.removeAttribute(prop);
-                }
-                return value;
+    /**
+     * \@internal
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype._compositionStart = function () { this._composing = true; };
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    DefaultValueAccessor.prototype._compositionEnd = function (value) {
+        this._composing = false;
+        this._compositionMode && this.onChange(value);
+    };
+    return DefaultValueAccessor;
+}());
+DefaultValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'input:not([type=checkbox])[formControlName],textarea[formControlName],input:not([type=checkbox])[formControl],textarea[formControl],input:not([type=checkbox])[ngModel],textarea[ngModel],[ngDefaultControl]',
+                // TODO: vsavkin replace the above selector with the one below it once
+                // https://github.com/angular/angular/issues/3011 is implemented
+                // selector: '[ngModel],[formControl],[formControlName]',
+                host: {
+                    '(input)': '_handleInput($event.target.value)',
+                    '(blur)': 'onTouched()',
+                    '(compositionstart)': '_compositionStart()',
+                    '(compositionend)': '_compositionEnd($event.target.value)'
+                },
+                providers: [DEFAULT_VALUE_ACCESSOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+DefaultValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+    { type: undefined, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [COMPOSITION_BUFFER_MODE,] },] },
+]; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @param {?} validator
+ * @return {?}
+ */
+function normalizeValidator(validator) {
+    if (((validator)).validate) {
+        return function (c) { return ((validator)).validate(c); };
+    }
+    else {
+        return (validator);
+    }
+}
+/**
+ * @param {?} validator
+ * @return {?}
+ */
+function normalizeAsyncValidator(validator) {
+    if (((validator)).validate) {
+        return function (c) { return ((validator)).validate(c); };
+    }
+    else {
+        return (validator);
+    }
+}
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var NUMBER_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return NumberValueAccessor; }),
+    multi: true
+};
+/**
+ * The accessor for writing a number value and listening to changes that is used by the
+ * {\@link NgModel}, {\@link FormControlDirective}, and {\@link FormControlName} directives.
+ *
+ *  ### Example
+ *  ```
+ *  <input type="number" [(ngModel)]="age">
+ *  ```
+ */
+var NumberValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     */
+    function NumberValueAccessor(_renderer, _elementRef) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        this.onChange = function (_) { };
+        this.onTouched = function () { };
+    }
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    NumberValueAccessor.prototype.writeValue = function (value) {
+        // The value needs to be normalized for IE9, otherwise it is set to 'null' when null
+        var /** @type {?} */ normalizedValue = value == null ? '' : value;
+        this._renderer.setProperty(this._elementRef.nativeElement, 'value', normalizedValue);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    NumberValueAccessor.prototype.registerOnChange = function (fn) {
+        this.onChange = function (value) { fn(value == '' ? null : parseFloat(value)); };
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    NumberValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    NumberValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    return NumberValueAccessor;
+}());
+NumberValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'input[type=number][formControlName],input[type=number][formControl],input[type=number][ngModel]',
+                host: {
+                    '(change)': 'onChange($event.target.value)',
+                    '(input)': 'onChange($event.target.value)',
+                    '(blur)': 'onTouched()'
+                },
+                providers: [NUMBER_VALUE_ACCESSOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+NumberValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+]; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @return {?}
+ */
+function unimplemented() {
+    throw new Error('unimplemented');
+}
+/**
+ * A base class that all control directive extend.
+ * It binds a {\@link FormControl} object to a DOM element.
+ *
+ * Used internally by Angular forms.
+ *
+ * \@stable
+ * @abstract
+ */
+var NgControl = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](NgControl, _super);
+    function NgControl() {
+        var _this = _super.apply(this, arguments) || this;
+        /**
+         * \@internal
+         */
+        _this._parent = null;
+        _this.name = null;
+        _this.valueAccessor = null;
+        /**
+         * \@internal
+         */
+        _this._rawValidators = [];
+        /**
+         * \@internal
+         */
+        _this._rawAsyncValidators = [];
+        return _this;
+    }
+    Object.defineProperty(NgControl.prototype, "validator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return (unimplemented()); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgControl.prototype, "asyncValidator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return (unimplemented()); },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @abstract
+     * @param {?} newValue
+     * @return {?}
+     */
+    NgControl.prototype.viewToModelUpdate = function (newValue) { };
+    return NgControl;
+}(AbstractControlDirective));
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var RADIO_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return RadioControlValueAccessor; }),
+    multi: true
+};
+/**
+ * Internal class used by Angular to uncheck radio buttons with the matching name.
+ */
+var RadioControlRegistry = (function () {
+    function RadioControlRegistry() {
+        this._accessors = [];
+    }
+    /**
+     * @param {?} control
+     * @param {?} accessor
+     * @return {?}
+     */
+    RadioControlRegistry.prototype.add = function (control, accessor) {
+        this._accessors.push([control, accessor]);
+    };
+    /**
+     * @param {?} accessor
+     * @return {?}
+     */
+    RadioControlRegistry.prototype.remove = function (accessor) {
+        for (var /** @type {?} */ i = this._accessors.length - 1; i >= 0; --i) {
+            if (this._accessors[i][1] === accessor) {
+                this._accessors.splice(i, 1);
+                return;
             }
+        }
+    };
+    /**
+     * @param {?} accessor
+     * @return {?}
+     */
+    RadioControlRegistry.prototype.select = function (accessor) {
+        var _this = this;
+        this._accessors.forEach(function (c) {
+            if (_this._isSameGroup(c, accessor) && c[1] !== accessor) {
+                c[1].fireUncheck(accessor.value);
+            }
+        });
+    };
+    /**
+     * @param {?} controlPair
+     * @param {?} accessor
+     * @return {?}
+     */
+    RadioControlRegistry.prototype._isSameGroup = function (controlPair, accessor) {
+        if (!controlPair[0].control)
+            return false;
+        return controlPair[0]._parent === accessor._control._parent &&
+            controlPair[1].name === accessor.name;
+    };
+    return RadioControlRegistry;
+}());
+RadioControlRegistry.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Injectable"] },
+];
+/**
+ * @nocollapse
+ */
+RadioControlRegistry.ctorParameters = function () { return []; };
+/**
+ * \@whatItDoes Writes radio control values and listens to radio control changes.
+ *
+ * Used by {\@link NgModel}, {\@link FormControlDirective}, and {\@link FormControlName}
+ * to keep the view synced with the {\@link FormControl} model.
+ *
+ * \@howToUse
+ *
+ * If you have imported the {\@link FormsModule} or the {\@link ReactiveFormsModule}, this
+ * value accessor will be active on any radio control that has a form directive. You do
+ * **not** need to add a special selector to activate it.
+ *
+ * ### How to use radio buttons with form directives
+ *
+ * To use radio buttons in a template-driven form, you'll want to ensure that radio buttons
+ * in the same group have the same `name` attribute.  Radio buttons with different `name`
+ * attributes do not affect each other.
+ *
+ * {\@example forms/ts/radioButtons/radio_button_example.ts region='TemplateDriven'}
+ *
+ * When using radio buttons in a reactive form, radio buttons in the same group should have the
+ * same `formControlName`. You can also add a `name` attribute, but it's optional.
+ *
+ * {\@example forms/ts/reactiveRadioButtons/reactive_radio_button_example.ts region='Reactive'}
+ *
+ *  * **npm package**: `\@angular/forms`
+ *
+ *  \@stable
+ */
+var RadioControlValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     * @param {?} _registry
+     * @param {?} _injector
+     */
+    function RadioControlValueAccessor(_renderer, _elementRef, _registry, _injector) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        this._registry = _registry;
+        this._injector = _injector;
+        this.onChange = function () { };
+        this.onTouched = function () { };
+    }
+    /**
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.ngOnInit = function () {
+        this._control = this._injector.get(NgControl);
+        this._checkName();
+        this._registry.add(this._control, this);
+    };
+    /**
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.ngOnDestroy = function () { this._registry.remove(this); };
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.writeValue = function (value) {
+        this._state = value === this.value;
+        this._renderer.setProperty(this._elementRef.nativeElement, 'checked', this._state);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.registerOnChange = function (fn) {
+        var _this = this;
+        this._fn = fn;
+        this.onChange = function () {
+            fn(_this.value);
+            _this._registry.select(_this);
+        };
+    };
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.fireUncheck = function (value) { this.writeValue(value); };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    /**
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype._checkName = function () {
+        if (this.name && this.formControlName && this.name !== this.formControlName) {
+            this._throwNameError();
+        }
+        if (!this.name && this.formControlName)
+            this.name = this.formControlName;
+    };
+    /**
+     * @return {?}
+     */
+    RadioControlValueAccessor.prototype._throwNameError = function () {
+        throw new Error("\n      If you define both a name and a formControlName attribute on your radio button, their values\n      must match. Ex: <input type=\"radio\" formControlName=\"food\" name=\"food\">\n    ");
+    };
+    return RadioControlValueAccessor;
+}());
+RadioControlValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'input[type=radio][formControlName],input[type=radio][formControl],input[type=radio][ngModel]',
+                host: { '(change)': 'onChange()', '(blur)': 'onTouched()' },
+                providers: [RADIO_VALUE_ACCESSOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+RadioControlValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+    { type: RadioControlRegistry, },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Injector"], },
+]; };
+RadioControlValueAccessor.propDecorators = {
+    'name': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+    'formControlName': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+    'value': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var RANGE_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return RangeValueAccessor; }),
+    multi: true
+};
+/**
+ * The accessor for writing a range value and listening to changes that is used by the
+ * {\@link NgModel}, {\@link FormControlDirective}, and {\@link FormControlName} directives.
+ *
+ *  ### Example
+ *  ```
+ *  <input type="range" [(ngModel)]="age" >
+ *  ```
+ */
+var RangeValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     */
+    function RangeValueAccessor(_renderer, _elementRef) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        this.onChange = function (_) { };
+        this.onTouched = function () { };
+    }
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    RangeValueAccessor.prototype.writeValue = function (value) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'value', parseFloat(value));
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    RangeValueAccessor.prototype.registerOnChange = function (fn) {
+        this.onChange = function (value) { fn(value == '' ? null : parseFloat(value)); };
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    RangeValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    RangeValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    return RangeValueAccessor;
+}());
+RangeValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'input[type=range][formControlName],input[type=range][formControl],input[type=range][ngModel]',
+                host: {
+                    '(change)': 'onChange($event.target.value)',
+                    '(input)': 'onChange($event.target.value)',
+                    '(blur)': 'onTouched()'
+                },
+                providers: [RANGE_VALUE_ACCESSOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+RangeValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+]; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var SELECT_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return SelectControlValueAccessor; }),
+    multi: true
+};
+/**
+ * @param {?} id
+ * @param {?} value
+ * @return {?}
+ */
+function _buildValueString(id, value) {
+    if (id == null)
+        return "" + value;
+    if (value && typeof value === 'object')
+        value = 'Object';
+    return (id + ": " + value).slice(0, 50);
+}
+/**
+ * @param {?} valueString
+ * @return {?}
+ */
+function _extractId(valueString) {
+    return valueString.split(':')[0];
+}
+/**
+ * \@whatItDoes Writes values and listens to changes on a select element.
+ *
+ * Used by {\@link NgModel}, {\@link FormControlDirective}, and {\@link FormControlName}
+ * to keep the view synced with the {\@link FormControl} model.
+ *
+ * \@howToUse
+ *
+ * If you have imported the {\@link FormsModule} or the {\@link ReactiveFormsModule}, this
+ * value accessor will be active on any select control that has a form directive. You do
+ * **not** need to add a special selector to activate it.
+ *
+ * ### How to use select controls with form directives
+ *
+ * To use a select in a template-driven form, simply add an `ngModel` and a `name`
+ * attribute to the main `<select>` tag.
+ *
+ * If your option values are simple strings, you can bind to the normal `value` property
+ * on the option.  If your option values happen to be objects (and you'd like to save the
+ * selection in your form as an object), use `ngValue` instead:
+ *
+ * {\@example forms/ts/selectControl/select_control_example.ts region='Component'}
+ *
+ * In reactive forms, you'll also want to add your form directive (`formControlName` or
+ * `formControl`) on the main `<select>` tag. Like in the former example, you have the
+ * choice of binding to the  `value` or `ngValue` property on the select's options.
+ *
+ * {\@example forms/ts/reactiveSelectControl/reactive_select_control_example.ts region='Component'}
+ *
+ * ### Caveat: Option selection
+ *
+ * Angular uses object identity to select option. It's possible for the identities of items
+ * to change while the data does not. This can happen, for example, if the items are produced
+ * from an RPC to the server, and that RPC is re-run. Even if the data hasn't changed, the
+ * second response will produce objects with different identities.
+ *
+ * To customize the default option comparison algorithm, `<select>` supports `compareWith` input.
+ * `compareWith` takes a **function** which has two arguments: `option1` and `option2`.
+ * If `compareWith` is given, Angular selects option by the return value of the function.
+ *
+ * #### Syntax
+ *
+ * ```
+ * <select [compareWith]="compareFn"  [(ngModel)]="selectedCountries">
+ *     <option *ngFor="let country of countries" [ngValue]="country">
+ *         {{country.name}}
+ *     </option>
+ * </select>
+ *
+ * compareFn(c1: Country, c2: Country): boolean {
+ *     return c1 && c2 ? c1.id === c2.id : c1 === c2;
+ * }
+ * ```
+ *
+ * Note: We listen to the 'change' event because 'input' events aren't fired
+ * for selects in Firefox and IE:
+ * https://bugzilla.mozilla.org/show_bug.cgi?id=1024350
+ * https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/4660045/
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * \@stable
+ */
+var SelectControlValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     */
+    function SelectControlValueAccessor(_renderer, _elementRef) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        /**
+         * \@internal
+         */
+        this._optionMap = new Map();
+        /**
+         * \@internal
+         */
+        this._idCounter = 0;
+        this.onChange = function (_) { };
+        this.onTouched = function () { };
+        this._compareWith = __WEBPACK_IMPORTED_MODULE_1__angular_core__["ɵlooseIdentical"];
+    }
+    Object.defineProperty(SelectControlValueAccessor.prototype, "compareWith", {
+        /**
+         * @param {?} fn
+         * @return {?}
+         */
+        set: function (fn) {
+            if (typeof fn !== 'function') {
+                throw new Error("compareWith must be a function, but received " + JSON.stringify(fn));
+            }
+            this._compareWith = fn;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype.writeValue = function (value) {
+        this.value = value;
+        var /** @type {?} */ id = this._getOptionId(value);
+        if (id == null) {
+            this._renderer.setProperty(this._elementRef.nativeElement, 'selectedIndex', -1);
+        }
+        var /** @type {?} */ valueString = _buildValueString(id, value);
+        this._renderer.setProperty(this._elementRef.nativeElement, 'value', valueString);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype.registerOnChange = function (fn) {
+        var _this = this;
+        this.onChange = function (valueString) {
+            _this.value = _this._getOptionValue(valueString);
+            fn(_this.value);
+        };
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype._registerOption = function () { return (this._idCounter++).toString(); };
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype._getOptionId = function (value) {
+        for (var _i = 0, _a = Array.from(this._optionMap.keys()); _i < _a.length; _i++) {
+            var id = _a[_i];
+            if (this._compareWith(this._optionMap.get(id), value))
+                return id;
         }
         return null;
     };
-    Object.defineProperty(obj, prop, desc);
-}
-function patchOnProperties(obj, properties, prototype) {
-    if (properties) {
-        for (var i = 0; i < properties.length; i++) {
-            patchProperty(obj, 'on' + properties[i], prototype);
-        }
-    }
-    else {
-        var onProperties = [];
-        for (var prop in obj) {
-            if (prop.substr(0, 2) == 'on') {
-                onProperties.push(prop);
-            }
-        }
-        for (var j = 0; j < onProperties.length; j++) {
-            patchProperty(obj, onProperties[j], prototype);
-        }
-    }
-}
-var originalInstanceKey = zoneSymbol('originalInstance');
-// wrap some native API on `window`
-function patchClass(className) {
-    var OriginalClass = _global[className];
-    if (!OriginalClass)
-        return;
-    // keep original class in global
-    _global[zoneSymbol(className)] = OriginalClass;
-    _global[className] = function () {
-        var a = bindArguments(arguments, className);
-        switch (a.length) {
-            case 0:
-                this[originalInstanceKey] = new OriginalClass();
-                break;
-            case 1:
-                this[originalInstanceKey] = new OriginalClass(a[0]);
-                break;
-            case 2:
-                this[originalInstanceKey] = new OriginalClass(a[0], a[1]);
-                break;
-            case 3:
-                this[originalInstanceKey] = new OriginalClass(a[0], a[1], a[2]);
-                break;
-            case 4:
-                this[originalInstanceKey] = new OriginalClass(a[0], a[1], a[2], a[3]);
-                break;
-            default:
-                throw new Error('Arg list too long.');
-        }
+    /**
+     * \@internal
+     * @param {?} valueString
+     * @return {?}
+     */
+    SelectControlValueAccessor.prototype._getOptionValue = function (valueString) {
+        var /** @type {?} */ id = _extractId(valueString);
+        return this._optionMap.has(id) ? this._optionMap.get(id) : valueString;
     };
-    // attach original delegate to patched function
-    attachOriginToPatched(_global[className], OriginalClass);
-    var instance = new OriginalClass(function () { });
-    var prop;
-    for (prop in instance) {
-        // https://bugs.webkit.org/show_bug.cgi?id=44721
-        if (className === 'XMLHttpRequest' && prop === 'responseBlob')
-            continue;
-        (function (prop) {
-            if (typeof instance[prop] === 'function') {
-                _global[className].prototype[prop] = function () {
-                    return this[originalInstanceKey][prop].apply(this[originalInstanceKey], arguments);
-                };
-            }
-            else {
-                Object.defineProperty(_global[className].prototype, prop, {
-                    set: function (fn) {
-                        if (typeof fn === 'function') {
-                            this[originalInstanceKey][prop] = Zone.current.wrap(fn, className + '.' + prop);
-                            // keep callback in wrapped function so we can
-                            // use it in Function.prototype.toString to return
-                            // the native one.
-                            attachOriginToPatched(this[originalInstanceKey][prop], fn);
-                        }
-                        else {
-                            this[originalInstanceKey][prop] = fn;
-                        }
-                    },
-                    get: function () {
-                        return this[originalInstanceKey][prop];
-                    }
-                });
-            }
-        }(prop));
-    }
-    for (prop in OriginalClass) {
-        if (prop !== 'prototype' && OriginalClass.hasOwnProperty(prop)) {
-            _global[className][prop] = OriginalClass[prop];
-        }
-    }
-}
-function patchMethod(target, name, patchFn) {
-    var proto = target;
-    while (proto && !proto.hasOwnProperty(name)) {
-        proto = Object.getPrototypeOf(proto);
-    }
-    if (!proto && target[name]) {
-        // somehow we did not find it, but we can see it. This happens on IE for Window properties.
-        proto = target;
-    }
-    var delegateName = zoneSymbol(name);
-    var delegate;
-    if (proto && !(delegate = proto[delegateName])) {
-        delegate = proto[delegateName] = proto[name];
-        var patchDelegate_1 = patchFn(delegate, delegateName, name);
-        proto[name] = function () {
-            return patchDelegate_1(this, arguments);
-        };
-        attachOriginToPatched(proto[name], delegate);
-    }
-    return delegate;
-}
-// TODO: @JiaLiPassion, support cancel task later if necessary
-function patchMacroTask(obj, funcName, metaCreator) {
-    var setNative = null;
-    function scheduleTask(task) {
-        var data = task.data;
-        data.args[data.callbackIndex] = function () {
-            task.invoke.apply(this, arguments);
-        };
-        setNative.apply(data.target, data.args);
-        return task;
-    }
-    setNative = patchMethod(obj, funcName, function (delegate) { return function (self, args) {
-        var meta = metaCreator(self, args);
-        if (meta.callbackIndex >= 0 && typeof args[meta.callbackIndex] === 'function') {
-            var task = Zone.current.scheduleMacroTask(meta.name, args[meta.callbackIndex], meta, scheduleTask, null);
-            return task;
-        }
-        else {
-            // cause an error by calling it directly.
-            return delegate.apply(self, args);
-        }
-    }; });
-}
-
-function attachOriginToPatched(patched, original) {
-    patched[zoneSymbol('OriginalDelegate')] = original;
-}
-var isDetectedIEOrEdge = false;
-var ieOrEdge = false;
-function isIEOrEdge() {
-    if (isDetectedIEOrEdge) {
-        return ieOrEdge;
-    }
-    isDetectedIEOrEdge = true;
-    try {
-        var ua = window.navigator.userAgent;
-        var msie = ua.indexOf('MSIE ');
-        if (ua.indexOf('MSIE ') !== -1 || ua.indexOf('Trident/') !== -1 || ua.indexOf('Edge/') !== -1) {
-            ieOrEdge = true;
-        }
-        return ieOrEdge;
-    }
-    catch (error) {
-    }
-}
-
+    return SelectControlValueAccessor;
+}());
+SelectControlValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'select:not([multiple])[formControlName],select:not([multiple])[formControl],select:not([multiple])[ngModel]',
+                host: { '(change)': 'onChange($event.target.value)', '(blur)': 'onTouched()' },
+                providers: [SELECT_VALUE_ACCESSOR]
+            },] },
+];
 /**
- * @license
- * Copyright Google Inc. All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * @nocollapse
  */
-// override Function.prototype.toString to make zone.js patched function
-// look like native function
-Zone.__load_patch('toString', function (global, Zone, api) {
-    // patch Func.prototype.toString to let them look like native
-    var originalFunctionToString = Zone['__zone_symbol__originalToString'] =
-        Function.prototype.toString;
-    Function.prototype.toString = function () {
-        if (typeof this === 'function') {
-            var originalDelegate = this[zoneSymbol('OriginalDelegate')];
-            if (originalDelegate) {
-                if (typeof originalDelegate === 'function') {
-                    return originalFunctionToString.apply(this[zoneSymbol('OriginalDelegate')], arguments);
-                }
-                else {
-                    return Object.prototype.toString.call(originalDelegate);
-                }
-            }
-            if (this === Promise) {
-                var nativePromise = global[zoneSymbol('Promise')];
-                if (nativePromise) {
-                    return originalFunctionToString.apply(nativePromise, arguments);
-                }
-            }
-            if (this === Error) {
-                var nativeError = global[zoneSymbol('Error')];
-                if (nativeError) {
-                    return originalFunctionToString.apply(nativeError, arguments);
-                }
-            }
-        }
-        return originalFunctionToString.apply(this, arguments);
-    };
-    // patch Object.prototype.toString to let them look like native
-    var originalObjectToString = Object.prototype.toString;
-    Object.prototype.toString = function () {
-        if (this instanceof Promise) {
-            return '[object Promise]';
-        }
-        return originalObjectToString.apply(this, arguments);
-    };
-});
-
-/**
- * @license
- * Copyright Google Inc. All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-var TRUE_STR = 'true';
-var FALSE_STR = 'false';
-// an identifier to tell ZoneTask do not create a new invoke closure
-var OPTIMIZED_ZONE_EVENT_TASK_DATA = {
-    isUsingGlobalCallback: true
+SelectControlValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+]; };
+SelectControlValueAccessor.propDecorators = {
+    'compareWith': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
 };
-var zoneSymbolEventNames = {};
-var globalSources = {};
-var CONSTRUCTOR_NAME = 'name';
-var FUNCTION_TYPE = 'function';
-var OBJECT_TYPE = 'object';
-var ZONE_SYMBOL_PREFIX = '__zone_symbol__';
-var EVENT_NAME_SYMBOL_REGX = /^__zone_symbol__(\w+)(true|false)$/;
-function patchEventTarget(_global, apis, patchOptions) {
-    var ADD_EVENT_LISTENER = (patchOptions && patchOptions.addEventListenerFnName) || 'addEventListener';
-    var REMOVE_EVENT_LISTENER = (patchOptions && patchOptions.removeEventListenerFnName) || 'removeEventListener';
-    var LISTENERS_EVENT_LISTENER = (patchOptions && patchOptions.listenersFnName) || 'eventListeners';
-    var REMOVE_ALL_LISTENERS_EVENT_LISTENER = (patchOptions && patchOptions.removeAllFnName) || 'removeAllListeners';
-    var zoneSymbolAddEventListener = zoneSymbol(ADD_EVENT_LISTENER);
-    var ADD_EVENT_LISTENER_SOURCE = '.' + ADD_EVENT_LISTENER + ':';
-    var PREPEND_EVENT_LISTENER = 'prependListener';
-    var PREPEND_EVENT_LISTENER_SOURCE = '.' + PREPEND_EVENT_LISTENER + ':';
-    var invokeTask = function (task, target, event) {
-        // for better performance, check isRemoved which is set
-        // by removeEventListener
-        if (task.isRemoved) {
-            return;
-        }
-        var delegate = task.callback;
-        if (typeof delegate === OBJECT_TYPE && delegate.handleEvent) {
-            // create the bind version of handleEvent when invoke
-            task.callback = function (event) { return delegate.handleEvent(event); };
-            task.originalDelegate = delegate;
-        }
-        // invoke static task.invoke
-        task.invoke(task, target, [event]);
-        var options = task.options;
-        if (options && typeof options === 'object' && options.once) {
-            // if options.once is true, after invoke once remove listener here
-            // only browser need to do this, nodejs eventEmitter will cal removeListener
-            // inside EventEmitter.once
-            var delegate_1 = task.originalDelegate ? task.originalDelegate : task.callback;
-            target[REMOVE_EVENT_LISTENER].apply(target, [event.type, delegate_1, options]);
+/**
+ * \@whatItDoes Marks `<option>` as dynamic, so Angular can be notified when options change.
+ *
+ * \@howToUse
+ *
+ * See docs for {\@link SelectControlValueAccessor} for usage examples.
+ *
+ * \@stable
+ */
+var NgSelectOption = (function () {
+    /**
+     * @param {?} _element
+     * @param {?} _renderer
+     * @param {?} _select
+     */
+    function NgSelectOption(_element, _renderer, _select) {
+        this._element = _element;
+        this._renderer = _renderer;
+        this._select = _select;
+        if (this._select)
+            this.id = this._select._registerOption();
+    }
+    Object.defineProperty(NgSelectOption.prototype, "ngValue", {
+        /**
+         * @param {?} value
+         * @return {?}
+         */
+        set: function (value) {
+            if (this._select == null)
+                return;
+            this._select._optionMap.set(this.id, value);
+            this._setElementValue(_buildValueString(this.id, value));
+            this._select.writeValue(this._select.value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgSelectOption.prototype, "value", {
+        /**
+         * @param {?} value
+         * @return {?}
+         */
+        set: function (value) {
+            this._setElementValue(value);
+            if (this._select)
+                this._select.writeValue(this._select.value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    NgSelectOption.prototype._setElementValue = function (value) {
+        this._renderer.setProperty(this._element.nativeElement, 'value', value);
+    };
+    /**
+     * @return {?}
+     */
+    NgSelectOption.prototype.ngOnDestroy = function () {
+        if (this._select) {
+            this._select._optionMap.delete(this.id);
+            this._select.writeValue(this._select.value);
         }
     };
-    // global shared zoneAwareCallback to handle all event callback with capture = false
-    var globalZoneAwareCallback = function (event) {
-        var target = this || _global;
-        var tasks = target[zoneSymbolEventNames[event.type][FALSE_STR]];
-        if (tasks) {
-            // invoke all tasks which attached to current target with given event.type and capture = false
-            // for performance concern, if task.length === 1, just invoke
-            if (tasks.length === 1) {
-                invokeTask(tasks[0], target, event);
+    return NgSelectOption;
+}());
+NgSelectOption.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: 'option' },] },
+];
+/**
+ * @nocollapse
+ */
+NgSelectOption.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: SelectControlValueAccessor, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] },] },
+]; };
+NgSelectOption.propDecorators = {
+    'ngValue': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngValue',] },],
+    'value': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['value',] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var SELECT_MULTIPLE_VALUE_ACCESSOR = {
+    provide: NG_VALUE_ACCESSOR,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return SelectMultipleControlValueAccessor; }),
+    multi: true
+};
+/**
+ * @param {?} id
+ * @param {?} value
+ * @return {?}
+ */
+function _buildValueString$1(id, value) {
+    if (id == null)
+        return "" + value;
+    if (typeof value === 'string')
+        value = "'" + value + "'";
+    if (value && typeof value === 'object')
+        value = 'Object';
+    return (id + ": " + value).slice(0, 50);
+}
+/**
+ * @param {?} valueString
+ * @return {?}
+ */
+function _extractId$1(valueString) {
+    return valueString.split(':')[0];
+}
+/**
+ * The accessor for writing a value and listening to changes on a select element.
+ *
+ *  ### Caveat: Options selection
+ *
+ * Angular uses object identity to select options. It's possible for the identities of items
+ * to change while the data does not. This can happen, for example, if the items are produced
+ * from an RPC to the server, and that RPC is re-run. Even if the data hasn't changed, the
+ * second response will produce objects with different identities.
+ *
+ * To customize the default option comparison algorithm, `<select multiple>` supports `compareWith`
+ * input. `compareWith` takes a **function** which has two arguments: `option1` and `option2`.
+ * If `compareWith` is given, Angular selects options by the return value of the function.
+ *
+ * #### Syntax
+ *
+ * ```
+ * <select multiple [compareWith]="compareFn"  [(ngModel)]="selectedCountries">
+ *     <option *ngFor="let country of countries" [ngValue]="country">
+ *         {{country.name}}
+ *     </option>
+ * </select>
+ *
+ * compareFn(c1: Country, c2: Country): boolean {
+ *     return c1 && c2 ? c1.id === c2.id : c1 === c2;
+ * }
+ * ```
+ *
+ * \@stable
+ */
+var SelectMultipleControlValueAccessor = (function () {
+    /**
+     * @param {?} _renderer
+     * @param {?} _elementRef
+     */
+    function SelectMultipleControlValueAccessor(_renderer, _elementRef) {
+        this._renderer = _renderer;
+        this._elementRef = _elementRef;
+        /**
+         * \@internal
+         */
+        this._optionMap = new Map();
+        /**
+         * \@internal
+         */
+        this._idCounter = 0;
+        this.onChange = function (_) { };
+        this.onTouched = function () { };
+        this._compareWith = __WEBPACK_IMPORTED_MODULE_1__angular_core__["ɵlooseIdentical"];
+    }
+    Object.defineProperty(SelectMultipleControlValueAccessor.prototype, "compareWith", {
+        /**
+         * @param {?} fn
+         * @return {?}
+         */
+        set: function (fn) {
+            if (typeof fn !== 'function') {
+                throw new Error("compareWith must be a function, but received " + JSON.stringify(fn));
             }
-            else {
-                // https://github.com/angular/zone.js/issues/836
-                // copy the tasks array before invoke, to avoid
-                // the callback will remove itself or other listener
-                var copyTasks = tasks.slice();
-                for (var i = 0; i < copyTasks.length; i++) {
-                    invokeTask(copyTasks[i], target, event);
+            this._compareWith = fn;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype.writeValue = function (value) {
+        var _this = this;
+        this.value = value;
+        var /** @type {?} */ optionSelectedStateSetter;
+        if (Array.isArray(value)) {
+            // convert values to ids
+            var /** @type {?} */ ids_1 = value.map(function (v) { return _this._getOptionId(v); });
+            optionSelectedStateSetter = function (opt, o) { opt._setSelected(ids_1.indexOf(o.toString()) > -1); };
+        }
+        else {
+            optionSelectedStateSetter = function (opt, o) { opt._setSelected(false); };
+        }
+        this._optionMap.forEach(optionSelectedStateSetter);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype.registerOnChange = function (fn) {
+        var _this = this;
+        this.onChange = function (_) {
+            var /** @type {?} */ selected = [];
+            if (_.hasOwnProperty('selectedOptions')) {
+                var /** @type {?} */ options = _.selectedOptions;
+                for (var /** @type {?} */ i = 0; i < options.length; i++) {
+                    var /** @type {?} */ opt = options.item(i);
+                    var /** @type {?} */ val = _this._getOptionValue(opt.value);
+                    selected.push(val);
                 }
             }
+            else {
+                var /** @type {?} */ options = (_.options);
+                for (var /** @type {?} */ i = 0; i < options.length; i++) {
+                    var /** @type {?} */ opt = options.item(i);
+                    if (opt.selected) {
+                        var /** @type {?} */ val = _this._getOptionValue(opt.value);
+                        selected.push(val);
+                    }
+                }
+            }
+            _this.value = selected;
+            fn(selected);
+        };
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype.registerOnTouched = function (fn) { this.onTouched = fn; };
+    /**
+     * @param {?} isDisabled
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype.setDisabledState = function (isDisabled) {
+        this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
+    };
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype._registerOption = function (value) {
+        var /** @type {?} */ id = (this._idCounter++).toString();
+        this._optionMap.set(id, value);
+        return id;
+    };
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype._getOptionId = function (value) {
+        for (var _i = 0, _a = Array.from(this._optionMap.keys()); _i < _a.length; _i++) {
+            var id = _a[_i];
+            if (this._compareWith(/** @type {?} */ ((this._optionMap.get(id)))._value, value))
+                return id;
+        }
+        return null;
+    };
+    /**
+     * \@internal
+     * @param {?} valueString
+     * @return {?}
+     */
+    SelectMultipleControlValueAccessor.prototype._getOptionValue = function (valueString) {
+        var /** @type {?} */ id = _extractId$1(valueString);
+        return this._optionMap.has(id) ? ((this._optionMap.get(id)))._value : valueString;
+    };
+    return SelectMultipleControlValueAccessor;
+}());
+SelectMultipleControlValueAccessor.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'select[multiple][formControlName],select[multiple][formControl],select[multiple][ngModel]',
+                host: { '(change)': 'onChange($event.target)', '(blur)': 'onTouched()' },
+                providers: [SELECT_MULTIPLE_VALUE_ACCESSOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+SelectMultipleControlValueAccessor.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+]; };
+SelectMultipleControlValueAccessor.propDecorators = {
+    'compareWith': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+/**
+ * Marks `<option>` as dynamic, so Angular can be notified when options change.
+ *
+ * ### Example
+ *
+ * ```
+ * <select multiple name="city" ngModel>
+ *   <option *ngFor="let c of cities" [value]="c"></option>
+ * </select>
+ * ```
+ */
+var NgSelectMultipleOption = (function () {
+    /**
+     * @param {?} _element
+     * @param {?} _renderer
+     * @param {?} _select
+     */
+    function NgSelectMultipleOption(_element, _renderer, _select) {
+        this._element = _element;
+        this._renderer = _renderer;
+        this._select = _select;
+        if (this._select) {
+            this.id = this._select._registerOption(this);
+        }
+    }
+    Object.defineProperty(NgSelectMultipleOption.prototype, "ngValue", {
+        /**
+         * @param {?} value
+         * @return {?}
+         */
+        set: function (value) {
+            if (this._select == null)
+                return;
+            this._value = value;
+            this._setElementValue(_buildValueString$1(this.id, value));
+            this._select.writeValue(this._select.value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgSelectMultipleOption.prototype, "value", {
+        /**
+         * @param {?} value
+         * @return {?}
+         */
+        set: function (value) {
+            if (this._select) {
+                this._value = value;
+                this._setElementValue(_buildValueString$1(this.id, value));
+                this._select.writeValue(this._select.value);
+            }
+            else {
+                this._setElementValue(value);
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    NgSelectMultipleOption.prototype._setElementValue = function (value) {
+        this._renderer.setProperty(this._element.nativeElement, 'value', value);
+    };
+    /**
+     * \@internal
+     * @param {?} selected
+     * @return {?}
+     */
+    NgSelectMultipleOption.prototype._setSelected = function (selected) {
+        this._renderer.setProperty(this._element.nativeElement, 'selected', selected);
+    };
+    /**
+     * @return {?}
+     */
+    NgSelectMultipleOption.prototype.ngOnDestroy = function () {
+        if (this._select) {
+            this._select._optionMap.delete(this.id);
+            this._select.writeValue(this._select.value);
         }
     };
-    // global shared zoneAwareCallback to handle all event callback with capture = true
-    var globalZoneAwareCaptureCallback = function (event) {
-        var target = this || _global;
-        var tasks = target[zoneSymbolEventNames[event.type][TRUE_STR]];
-        if (tasks) {
-            // invoke all tasks which attached to current target with given event.type and capture = false
-            // for performance concern, if task.length === 1, just invoke
-            if (tasks.length === 1) {
-                invokeTask(tasks[0], target, event);
-            }
-            else {
-                // https://github.com/angular/zone.js/issues/836
-                // copy the tasks array before invoke, to avoid
-                // the callback will remove itself or other listener
-                var copyTasks = tasks.slice();
-                for (var i = 0; i < copyTasks.length; i++) {
-                    invokeTask(copyTasks[i], target, event);
-                }
-            }
+    return NgSelectMultipleOption;
+}());
+NgSelectMultipleOption.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: 'option' },] },
+];
+/**
+ * @nocollapse
+ */
+NgSelectMultipleOption.ctorParameters = function () { return [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["ElementRef"], },
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Renderer2"], },
+    { type: SelectMultipleControlValueAccessor, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] },] },
+]; };
+NgSelectMultipleOption.propDecorators = {
+    'ngValue': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngValue',] },],
+    'value': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['value',] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @param {?} name
+ * @param {?} parent
+ * @return {?}
+ */
+function controlPath(name, parent) {
+    return ((parent.path)).concat([name]);
+}
+/**
+ * @param {?} control
+ * @param {?} dir
+ * @return {?}
+ */
+function setUpControl(control, dir) {
+    if (!control)
+        _throwError(dir, 'Cannot find control with');
+    if (!dir.valueAccessor)
+        _throwError(dir, 'No value accessor for form control with');
+    control.validator = Validators.compose([/** @type {?} */ ((control.validator)), dir.validator]);
+    control.asyncValidator = Validators.composeAsync([/** @type {?} */ ((control.asyncValidator)), dir.asyncValidator]); /** @type {?} */
+    ((dir.valueAccessor)).writeValue(control.value); /** @type {?} */
+    ((
+    // view -> model
+    dir.valueAccessor)).registerOnChange(function (newValue) {
+        dir.viewToModelUpdate(newValue);
+        control.markAsDirty();
+        control.setValue(newValue, { emitModelToViewChange: false });
+    }); /** @type {?} */
+    ((
+    // touched
+    dir.valueAccessor)).registerOnTouched(function () { return control.markAsTouched(); });
+    control.registerOnChange(function (newValue, emitModelEvent) {
+        ((
+        // control -> view
+        dir.valueAccessor)).writeValue(newValue);
+        // control -> ngModel
+        if (emitModelEvent)
+            dir.viewToModelUpdate(newValue);
+    });
+    if (((dir.valueAccessor)).setDisabledState) {
+        control.registerOnDisabledChange(function (isDisabled) { /** @type {?} */ ((((dir.valueAccessor)).setDisabledState))(isDisabled); });
+    }
+    // re-run validation when validator binding changes, e.g. minlength=3 -> minlength=4
+    dir._rawValidators.forEach(function (validator) {
+        if (((validator)).registerOnValidatorChange)
+            ((((validator)).registerOnValidatorChange))(function () { return control.updateValueAndValidity(); });
+    });
+    dir._rawAsyncValidators.forEach(function (validator) {
+        if (((validator)).registerOnValidatorChange)
+            ((((validator)).registerOnValidatorChange))(function () { return control.updateValueAndValidity(); });
+    });
+}
+/**
+ * @param {?} control
+ * @param {?} dir
+ * @return {?}
+ */
+function cleanUpControl(control, dir) {
+    ((dir.valueAccessor)).registerOnChange(function () { return _noControlError(dir); }); /** @type {?} */
+    ((dir.valueAccessor)).registerOnTouched(function () { return _noControlError(dir); });
+    dir._rawValidators.forEach(function (validator) {
+        if (validator.registerOnValidatorChange) {
+            validator.registerOnValidatorChange(null);
         }
-    };
-    function patchEventTargetMethods(obj, patchOptions) {
-        if (!obj) {
-            return false;
+    });
+    dir._rawAsyncValidators.forEach(function (validator) {
+        if (validator.registerOnValidatorChange) {
+            validator.registerOnValidatorChange(null);
         }
-        var useGlobalCallback = true;
-        if (patchOptions && patchOptions.useGlobalCallback !== undefined) {
-            useGlobalCallback = patchOptions.useGlobalCallback;
-        }
-        var validateHandler = patchOptions && patchOptions.validateHandler;
-        var checkDuplicate = true;
-        if (patchOptions && patchOptions.checkDuplicate !== undefined) {
-            checkDuplicate = patchOptions.checkDuplicate;
-        }
-        var returnTarget = false;
-        if (patchOptions && patchOptions.returnTarget !== undefined) {
-            returnTarget = patchOptions.returnTarget;
-        }
-        var proto = obj;
-        while (proto && !proto.hasOwnProperty(ADD_EVENT_LISTENER)) {
-            proto = Object.getPrototypeOf(proto);
-        }
-        if (!proto && obj[ADD_EVENT_LISTENER]) {
-            // somehow we did not find it, but we can see it. This happens on IE for Window properties.
-            proto = obj;
-        }
-        if (!proto) {
-            return false;
-        }
-        if (proto[zoneSymbolAddEventListener]) {
-            return false;
-        }
-        // a shared global taskData to pass data for scheduleEventTask
-        // so we do not need to create a new object just for pass some data
-        var taskData = {};
-        var nativeAddEventListener = proto[zoneSymbolAddEventListener] = proto[ADD_EVENT_LISTENER];
-        var nativeRemoveEventListener = proto[zoneSymbol(REMOVE_EVENT_LISTENER)] =
-            proto[REMOVE_EVENT_LISTENER];
-        var nativeListeners = proto[zoneSymbol(LISTENERS_EVENT_LISTENER)] =
-            proto[LISTENERS_EVENT_LISTENER];
-        var nativeRemoveAllListeners = proto[zoneSymbol(REMOVE_ALL_LISTENERS_EVENT_LISTENER)] =
-            proto[REMOVE_ALL_LISTENERS_EVENT_LISTENER];
-        var nativePrependEventListener;
-        if (patchOptions && patchOptions.prependEventListenerFnName) {
-            nativePrependEventListener = proto[zoneSymbol(patchOptions.prependEventListenerFnName)] =
-                proto[patchOptions.prependEventListenerFnName];
-        }
-        var customScheduleGlobal = function (task) {
-            // if there is already a task for the eventName + capture,
-            // just return, because we use the shared globalZoneAwareCallback here.
-            if (taskData.isExisting) {
-                return;
-            }
-            return nativeAddEventListener.apply(taskData.target, [
-                taskData.eventName,
-                taskData.capture ? globalZoneAwareCaptureCallback : globalZoneAwareCallback,
-                taskData.options
-            ]);
-        };
-        var customCancelGlobal = function (task) {
-            // if task is not marked as isRemoved, this call is directly
-            // from Zone.prototype.cancelTask, we should remove the task
-            // from tasksList of target first
-            if (!task.isRemoved) {
-                var symbolEventNames = zoneSymbolEventNames[task.eventName];
-                var symbolEventName = void 0;
-                if (symbolEventNames) {
-                    symbolEventName = symbolEventNames[task.capture ? TRUE_STR : FALSE_STR];
-                }
-                var existingTasks = symbolEventName && task.target[symbolEventName];
-                if (existingTasks) {
-                    for (var i = 0; i < existingTasks.length; i++) {
-                        var existingTask = existingTasks[i];
-                        if (existingTask === task) {
-                            existingTasks.splice(i, 1);
-                            // set isRemoved to data for faster invokeTask check
-                            task.isRemoved = true;
-                            if (existingTasks.length === 0) {
-                                // all tasks for the eventName + capture have gone,
-                                // remove globalZoneAwareCallback and remove the task cache from target
-                                task.allRemoved = true;
-                                task.target[symbolEventName] = null;
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            // if all tasks for the eventName + capture have gone,
-            // we will really remove the global event callback,
-            // if not, return
-            if (!task.allRemoved) {
-                return;
-            }
-            return nativeRemoveEventListener.apply(task.target, [
-                task.eventName, task.capture ? globalZoneAwareCaptureCallback : globalZoneAwareCallback,
-                task.options
-            ]);
-        };
-        var customScheduleNonGlobal = function (task) {
-            return nativeAddEventListener.apply(taskData.target, [taskData.eventName, task.invoke, taskData.options]);
-        };
-        var customSchedulePrepend = function (task) {
-            return nativePrependEventListener.apply(taskData.target, [taskData.eventName, task.invoke, taskData.options]);
-        };
-        var customCancelNonGlobal = function (task) {
-            return nativeRemoveEventListener.apply(task.target, [task.eventName, task.invoke, task.options]);
-        };
-        var customSchedule = useGlobalCallback ? customScheduleGlobal : customScheduleNonGlobal;
-        var customCancel = useGlobalCallback ? customCancelGlobal : customCancelNonGlobal;
-        var compareTaskCallbackVsDelegate = function (task, delegate) {
-            var typeOfDelegate = typeof delegate;
-            if ((typeOfDelegate === FUNCTION_TYPE && task.callback === delegate) ||
-                (typeOfDelegate === OBJECT_TYPE && task.originalDelegate === delegate)) {
-                // same callback, same capture, same event name, just return
-                return true;
-            }
-            return false;
-        };
-        var compare = (patchOptions && patchOptions.compareTaskCallbackVsDelegate) ?
-            patchOptions.compareTaskCallbackVsDelegate :
-            compareTaskCallbackVsDelegate;
-        var makeAddListener = function (nativeListener, addSource, customScheduleFn, customCancelFn, returnTarget, prepend) {
-            if (returnTarget === void 0) { returnTarget = false; }
-            if (prepend === void 0) { prepend = false; }
-            return function () {
-                var target = this || _global;
-                var targetZone = Zone.current;
-                var delegate = arguments[1];
-                if (!delegate) {
-                    return nativeListener.apply(this, arguments);
-                }
-                // don't create the bind delegate function for handleEvent
-                // case here to improve addEventListener performance
-                // we will create the bind delegate when invoke
-                var isHandleEvent = false;
-                if (typeof delegate !== FUNCTION_TYPE) {
-                    if (!delegate.handleEvent) {
-                        return nativeListener.apply(this, arguments);
-                    }
-                    isHandleEvent = true;
-                }
-                if (validateHandler && !validateHandler(nativeListener, delegate, target, arguments)) {
-                    return;
-                }
-                var eventName = arguments[0];
-                var options = arguments[2];
-                var capture;
-                var once = false;
-                if (options === undefined) {
-                    capture = false;
-                }
-                else if (options === true) {
-                    capture = true;
-                }
-                else if (options === false) {
-                    capture = false;
-                }
-                else {
-                    capture = options ? !!options.capture : false;
-                    once = options ? !!options.once : false;
-                }
-                var zone = Zone.current;
-                var symbolEventNames = zoneSymbolEventNames[eventName];
-                var symbolEventName;
-                if (!symbolEventNames) {
-                    // the code is duplicate, but I just want to get some better performance
-                    var falseEventName = eventName + FALSE_STR;
-                    var trueEventName = eventName + TRUE_STR;
-                    var symbol = ZONE_SYMBOL_PREFIX + falseEventName;
-                    var symbolCapture = ZONE_SYMBOL_PREFIX + trueEventName;
-                    zoneSymbolEventNames[eventName] = {};
-                    zoneSymbolEventNames[eventName][FALSE_STR] = symbol;
-                    zoneSymbolEventNames[eventName][TRUE_STR] = symbolCapture;
-                    symbolEventName = capture ? symbolCapture : symbol;
-                }
-                else {
-                    symbolEventName = symbolEventNames[capture ? TRUE_STR : FALSE_STR];
-                }
-                var existingTasks = target[symbolEventName];
-                var isExisting = false;
-                if (existingTasks) {
-                    // already have task registered
-                    isExisting = true;
-                    if (checkDuplicate) {
-                        for (var i = 0; i < existingTasks.length; i++) {
-                            if (compare(existingTasks[i], delegate)) {
-                                // same callback, same capture, same event name, just return
-                                return;
-                            }
-                        }
-                    }
-                }
-                else {
-                    existingTasks = target[symbolEventName] = [];
-                }
-                var source;
-                var constructorName = target.constructor[CONSTRUCTOR_NAME];
-                var targetSource = globalSources[constructorName];
-                if (targetSource) {
-                    source = targetSource[eventName];
-                }
-                if (!source) {
-                    source = constructorName + addSource + eventName;
-                }
-                // do not create a new object as task.data to pass those things
-                // just use the global shared one
-                taskData.options = options;
-                if (once) {
-                    // if addEventListener with once options, we don't pass it to
-                    // native addEventListener, instead we keep the once setting
-                    // and handle ourselves.
-                    taskData.options.once = false;
-                }
-                taskData.target = target;
-                taskData.capture = capture;
-                taskData.eventName = eventName;
-                taskData.isExisting = isExisting;
-                var data = useGlobalCallback ? OPTIMIZED_ZONE_EVENT_TASK_DATA : null;
-                var task = zone.scheduleEventTask(source, delegate, data, customScheduleFn, customCancelFn);
-                // have to save those information to task in case
-                // application may call task.zone.cancelTask() directly
-                if (once) {
-                    options.once = true;
-                }
-                task.options = options;
-                task.target = target;
-                task.capture = capture;
-                task.eventName = eventName;
-                if (isHandleEvent) {
-                    // save original delegate for compare to check duplicate
-                    task.originalDelegate = delegate;
-                }
-                if (!prepend) {
-                    existingTasks.push(task);
-                }
-                else {
-                    existingTasks.unshift(task);
-                }
-                if (returnTarget) {
-                    return target;
-                }
-            };
-        };
-        proto[ADD_EVENT_LISTENER] = makeAddListener(nativeAddEventListener, ADD_EVENT_LISTENER_SOURCE, customSchedule, customCancel, returnTarget);
-        if (nativePrependEventListener) {
-            proto[PREPEND_EVENT_LISTENER] = makeAddListener(nativePrependEventListener, PREPEND_EVENT_LISTENER_SOURCE, customSchedulePrepend, customCancel, returnTarget, true);
-        }
-        proto[REMOVE_EVENT_LISTENER] = function () {
-            var target = this || _global;
-            var eventName = arguments[0];
-            var options = arguments[2];
-            var capture;
-            if (options === undefined) {
-                capture = false;
-            }
-            else if (options === true) {
-                capture = true;
-            }
-            else if (options === false) {
-                capture = false;
-            }
-            else {
-                capture = options ? !!options.capture : false;
-            }
-            var delegate = arguments[1];
-            if (!delegate) {
-                return nativeRemoveEventListener.apply(this, arguments);
-            }
-            if (validateHandler &&
-                !validateHandler(nativeRemoveEventListener, delegate, target, arguments)) {
-                return;
-            }
-            var symbolEventNames = zoneSymbolEventNames[eventName];
-            var symbolEventName;
-            if (symbolEventNames) {
-                symbolEventName = symbolEventNames[capture ? TRUE_STR : FALSE_STR];
-            }
-            var existingTasks = symbolEventName && target[symbolEventName];
-            if (existingTasks) {
-                for (var i = 0; i < existingTasks.length; i++) {
-                    var existingTask = existingTasks[i];
-                    var typeOfDelegate = typeof delegate;
-                    if (compare(existingTask, delegate)) {
-                        existingTasks.splice(i, 1);
-                        // set isRemoved to data for faster invokeTask check
-                        existingTask.isRemoved = true;
-                        if (existingTasks.length === 0) {
-                            // all tasks for the eventName + capture have gone,
-                            // remove globalZoneAwareCallback and remove the task cache from target
-                            existingTask.allRemoved = true;
-                            target[symbolEventName] = null;
-                        }
-                        existingTask.zone.cancelTask(existingTask);
-                        return;
-                    }
-                }
-            }
-        };
-        proto[LISTENERS_EVENT_LISTENER] = function () {
-            var target = this || _global;
-            var eventName = arguments[0];
-            var listeners = [];
-            var tasks = findEventTasks(target, eventName);
-            for (var i = 0; i < tasks.length; i++) {
-                var task = tasks[i];
-                var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
-                listeners.push(delegate);
-            }
-            return listeners;
-        };
-        proto[REMOVE_ALL_LISTENERS_EVENT_LISTENER] = function () {
-            var target = this || _global;
-            var eventName = arguments[0];
-            if (!eventName) {
-                var keys = Object.keys(target);
-                for (var i = 0; i < keys.length; i++) {
-                    var prop = keys[i];
-                    var match = EVENT_NAME_SYMBOL_REGX.exec(prop);
-                    var evtName = match && match[1];
-                    // in nodejs EventEmitter, removeListener event is
-                    // used for monitoring the removeListener call,
-                    // so just keep removeListener eventListener until
-                    // all other eventListeners are removed
-                    if (evtName && evtName !== 'removeListener') {
-                        this[REMOVE_ALL_LISTENERS_EVENT_LISTENER].apply(this, [evtName]);
-                    }
-                }
-                // remove removeListener listener finally
-                this[REMOVE_ALL_LISTENERS_EVENT_LISTENER].apply(this, ['removeListener']);
-            }
-            else {
-                var symbolEventNames = zoneSymbolEventNames[eventName];
-                if (symbolEventNames) {
-                    var symbolEventName = symbolEventNames[FALSE_STR];
-                    var symbolCaptureEventName = symbolEventNames[TRUE_STR];
-                    var tasks = target[symbolEventName];
-                    var captureTasks = target[symbolCaptureEventName];
-                    if (tasks) {
-                        var removeTasks = tasks.slice();
-                        for (var i = 0; i < removeTasks.length; i++) {
-                            var task = removeTasks[i];
-                            var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
-                            this[REMOVE_EVENT_LISTENER].apply(this, [eventName, delegate, task.options]);
-                        }
-                    }
-                    if (captureTasks) {
-                        var removeTasks = captureTasks.slice();
-                        for (var i = 0; i < removeTasks.length; i++) {
-                            var task = removeTasks[i];
-                            var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
-                            this[REMOVE_EVENT_LISTENER].apply(this, [eventName, delegate, task.options]);
-                        }
-                    }
-                }
-            }
-        };
-        // for native toString patch
-        attachOriginToPatched(proto[ADD_EVENT_LISTENER], nativeAddEventListener);
-        attachOriginToPatched(proto[REMOVE_EVENT_LISTENER], nativeRemoveEventListener);
-        if (nativeRemoveAllListeners) {
-            attachOriginToPatched(proto[REMOVE_ALL_LISTENERS_EVENT_LISTENER], nativeRemoveAllListeners);
-        }
-        if (nativeListeners) {
-            attachOriginToPatched(proto[LISTENERS_EVENT_LISTENER], nativeListeners);
-        }
+    });
+    if (control)
+        control._clearChangeFns();
+}
+/**
+ * @param {?} control
+ * @param {?} dir
+ * @return {?}
+ */
+function setUpFormContainer(control, dir) {
+    if (control == null)
+        _throwError(dir, 'Cannot find control with');
+    control.validator = Validators.compose([control.validator, dir.validator]);
+    control.asyncValidator = Validators.composeAsync([control.asyncValidator, dir.asyncValidator]);
+}
+/**
+ * @param {?} dir
+ * @return {?}
+ */
+function _noControlError(dir) {
+    return _throwError(dir, 'There is no FormControl instance attached to form control element with');
+}
+/**
+ * @param {?} dir
+ * @param {?} message
+ * @return {?}
+ */
+function _throwError(dir, message) {
+    var /** @type {?} */ messageEnd;
+    if (((dir.path)).length > 1) {
+        messageEnd = "path: '" + ((dir.path)).join(' -> ') + "'";
+    }
+    else if (((dir.path))[0]) {
+        messageEnd = "name: '" + dir.path + "'";
+    }
+    else {
+        messageEnd = 'unspecified name attribute';
+    }
+    throw new Error(message + " " + messageEnd);
+}
+/**
+ * @param {?} validators
+ * @return {?}
+ */
+function composeValidators(validators) {
+    return validators != null ? Validators.compose(validators.map(normalizeValidator)) : null;
+}
+/**
+ * @param {?} validators
+ * @return {?}
+ */
+function composeAsyncValidators(validators) {
+    return validators != null ? Validators.composeAsync(validators.map(normalizeAsyncValidator)) :
+        null;
+}
+/**
+ * @param {?} changes
+ * @param {?} viewModel
+ * @return {?}
+ */
+function isPropertyUpdated(changes, viewModel) {
+    if (!changes.hasOwnProperty('model'))
+        return false;
+    var /** @type {?} */ change = changes['model'];
+    if (change.isFirstChange())
         return true;
-    }
-    var results = [];
-    for (var i = 0; i < apis.length; i++) {
-        results[i] = patchEventTargetMethods(apis[i], patchOptions);
-    }
-    return results;
+    return !Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["ɵlooseIdentical"])(viewModel, change.currentValue);
 }
-function findEventTasks(target, eventName) {
-    var foundTasks = [];
-    for (var prop in target) {
-        var match = EVENT_NAME_SYMBOL_REGX.exec(prop);
-        var evtName = match && match[1];
-        if (evtName && (!eventName || evtName === eventName)) {
-            var tasks = target[prop];
-            if (tasks) {
-                for (var i = 0; i < tasks.length; i++) {
-                    foundTasks.push(tasks[i]);
-                }
-            }
-        }
-    }
-    return foundTasks;
-}
-
+var BUILTIN_ACCESSORS = [
+    CheckboxControlValueAccessor,
+    RangeValueAccessor,
+    NumberValueAccessor,
+    SelectControlValueAccessor,
+    SelectMultipleControlValueAccessor,
+    RadioControlValueAccessor,
+];
 /**
- * @license
- * Copyright Google Inc. All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * @param {?} valueAccessor
+ * @return {?}
  */
-function patchTimer(window, setName, cancelName, nameSuffix) {
-    var setNative = null;
-    var clearNative = null;
-    setName += nameSuffix;
-    cancelName += nameSuffix;
-    var tasksByHandleId = {};
-    function scheduleTask(task) {
-        var data = task.data;
-        function timer() {
-            try {
-                task.invoke.apply(this, arguments);
-            }
-            finally {
-                if (typeof data.handleId === 'number') {
-                    // Node returns complex objects as handleIds
-                    delete tasksByHandleId[data.handleId];
-                }
-            }
-        }
-        data.args[0] = timer;
-        data.handleId = setNative.apply(window, data.args);
-        if (typeof data.handleId === 'number') {
-            // Node returns complex objects as handleIds -> no need to keep them around. Additionally,
-            // this throws an
-            // exception in older node versions and has no effect there, because of the stringified key.
-            tasksByHandleId[data.handleId] = task;
-        }
-        return task;
-    }
-    function clearTask(task) {
-        if (typeof task.data.handleId === 'number') {
-            // Node returns complex objects as handleIds
-            delete tasksByHandleId[task.data.handleId];
-        }
-        return clearNative(task.data.handleId);
-    }
-    setNative =
-        patchMethod(window, setName, function (delegate) { return function (self, args) {
-            if (typeof args[0] === 'function') {
-                var zone = Zone.current;
-                var options = {
-                    handleId: null,
-                    isPeriodic: nameSuffix === 'Interval',
-                    delay: (nameSuffix === 'Timeout' || nameSuffix === 'Interval') ? args[1] || 0 : null,
-                    args: args
-                };
-                var task = zone.scheduleMacroTask(setName, args[0], options, scheduleTask, clearTask);
-                if (!task) {
-                    return task;
-                }
-                // Node.js must additionally support the ref and unref functions.
-                var handle = task.data.handleId;
-                // check whether handle is null, because some polyfill or browser
-                // may return undefined from setTimeout/setInterval/setImmediate/requestAnimationFrame
-                if (handle && handle.ref && handle.unref && typeof handle.ref === 'function' &&
-                    typeof handle.unref === 'function') {
-                    task.ref = handle.ref.bind(handle);
-                    task.unref = handle.unref.bind(handle);
-                }
-                return task;
-            }
-            else {
-                // cause an error by calling it directly.
-                return delegate.apply(window, args);
-            }
-        }; });
-    clearNative =
-        patchMethod(window, cancelName, function (delegate) { return function (self, args) {
-            var task = typeof args[0] === 'number' ? tasksByHandleId[args[0]] : args[0];
-            if (task && typeof task.type === 'string') {
-                if (task.state !== 'notScheduled' &&
-                    (task.cancelFn && task.data.isPeriodic || task.runCount === 0)) {
-                    // Do not cancel already canceled functions
-                    task.zone.cancelTask(task);
-                }
-            }
-            else {
-                // cause an error by calling it directly.
-                delegate.apply(window, args);
-            }
-        }; });
+function isBuiltInAccessor(valueAccessor) {
+    return BUILTIN_ACCESSORS.some(function (a) { return valueAccessor.constructor === a; });
 }
-
 /**
- * @license
- * Copyright Google Inc. All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * @param {?} dir
+ * @param {?} valueAccessors
+ * @return {?}
  */
-/*
- * This is necessary for Chrome and Chrome mobile, to enable
- * things like redefining `createdCallback` on an element.
- */
-var _defineProperty = Object[zoneSymbol('defineProperty')] = Object.defineProperty;
-var _getOwnPropertyDescriptor = Object[zoneSymbol('getOwnPropertyDescriptor')] =
-    Object.getOwnPropertyDescriptor;
-var _create = Object.create;
-var unconfigurablesKey = zoneSymbol('unconfigurables');
-function propertyPatch() {
-    Object.defineProperty = function (obj, prop, desc) {
-        if (isUnconfigurable(obj, prop)) {
-            throw new TypeError('Cannot assign to read only property \'' + prop + '\' of ' + obj);
+function selectValueAccessor(dir, valueAccessors) {
+    if (!valueAccessors)
+        return null;
+    var /** @type {?} */ defaultAccessor = undefined;
+    var /** @type {?} */ builtinAccessor = undefined;
+    var /** @type {?} */ customAccessor = undefined;
+    valueAccessors.forEach(function (v) {
+        if (v.constructor === DefaultValueAccessor) {
+            defaultAccessor = v;
         }
-        var originalConfigurableFlag = desc.configurable;
-        if (prop !== 'prototype') {
-            desc = rewriteDescriptor(obj, prop, desc);
-        }
-        return _tryDefineProperty(obj, prop, desc, originalConfigurableFlag);
-    };
-    Object.defineProperties = function (obj, props) {
-        Object.keys(props).forEach(function (prop) {
-            Object.defineProperty(obj, prop, props[prop]);
-        });
-        return obj;
-    };
-    Object.create = function (obj, proto) {
-        if (typeof proto === 'object' && !Object.isFrozen(proto)) {
-            Object.keys(proto).forEach(function (prop) {
-                proto[prop] = rewriteDescriptor(obj, prop, proto[prop]);
-            });
-        }
-        return _create(obj, proto);
-    };
-    Object.getOwnPropertyDescriptor = function (obj, prop) {
-        var desc = _getOwnPropertyDescriptor(obj, prop);
-        if (isUnconfigurable(obj, prop)) {
-            desc.configurable = false;
-        }
-        return desc;
-    };
-}
-function _redefineProperty(obj, prop, desc) {
-    var originalConfigurableFlag = desc.configurable;
-    desc = rewriteDescriptor(obj, prop, desc);
-    return _tryDefineProperty(obj, prop, desc, originalConfigurableFlag);
-}
-function isUnconfigurable(obj, prop) {
-    return obj && obj[unconfigurablesKey] && obj[unconfigurablesKey][prop];
-}
-function rewriteDescriptor(obj, prop, desc) {
-    desc.configurable = true;
-    if (!desc.configurable) {
-        if (!obj[unconfigurablesKey]) {
-            _defineProperty(obj, unconfigurablesKey, { writable: true, value: {} });
-        }
-        obj[unconfigurablesKey][prop] = true;
-    }
-    return desc;
-}
-function _tryDefineProperty(obj, prop, desc, originalConfigurableFlag) {
-    try {
-        return _defineProperty(obj, prop, desc);
-    }
-    catch (error) {
-        if (desc.configurable) {
-            // In case of errors, when the configurable flag was likely set by rewriteDescriptor(), let's
-            // retry with the original flag value
-            if (typeof originalConfigurableFlag == 'undefined') {
-                delete desc.configurable;
-            }
-            else {
-                desc.configurable = originalConfigurableFlag;
-            }
-            try {
-                return _defineProperty(obj, prop, desc);
-            }
-            catch (error) {
-                var descJson = null;
-                try {
-                    descJson = JSON.stringify(desc);
-                }
-                catch (error) {
-                    descJson = descJson.toString();
-                }
-                console.log("Attempting to configure '" + prop + "' with descriptor '" + descJson + "' on object '" + obj + "' and got error, giving up: " + error);
-            }
+        else if (isBuiltInAccessor(v)) {
+            if (builtinAccessor)
+                _throwError(dir, 'More than one built-in value accessor matches form control with');
+            builtinAccessor = v;
         }
         else {
-            throw error;
+            if (customAccessor)
+                _throwError(dir, 'More than one custom value accessor matches form control with');
+            customAccessor = v;
         }
-    }
+    });
+    if (customAccessor)
+        return customAccessor;
+    if (builtinAccessor)
+        return builtinAccessor;
+    if (defaultAccessor)
+        return defaultAccessor;
+    _throwError(dir, 'No valid value accessor for form control with');
+    return null;
 }
-
 /**
  * @license
  * Copyright Google Inc. All Rights Reserved.
@@ -57581,491 +60490,1850 @@ function _tryDefineProperty(obj, prop, desc, originalConfigurableFlag) {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// we have to patch the instance since the proto is non-configurable
-function apply(api, _global) {
-    var WS = _global.WebSocket;
-    // On Safari window.EventTarget doesn't exist so need to patch WS add/removeEventListener
-    // On older Chrome, no need since EventTarget was already patched
-    if (!_global.EventTarget) {
-        patchEventTarget(api, _global, [WS.prototype]);
+/**
+ * This is a base class for code shared between {\@link NgModelGroup} and {\@link FormGroupName}.
+ *
+ * \@stable
+ */
+var AbstractFormGroupDirective = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](AbstractFormGroupDirective, _super);
+    function AbstractFormGroupDirective() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
-    _global.WebSocket = function (a, b) {
-        var socket = arguments.length > 1 ? new WS(a, b) : new WS(a);
-        var proxySocket;
-        var proxySocketProto;
-        // Safari 7.0 has non-configurable own 'onmessage' and friends properties on the socket instance
-        var onmessageDesc = Object.getOwnPropertyDescriptor(socket, 'onmessage');
-        if (onmessageDesc && onmessageDesc.configurable === false) {
-            proxySocket = Object.create(socket);
-            // socket have own property descriptor 'onopen', 'onmessage', 'onclose', 'onerror'
-            // but proxySocket not, so we will keep socket as prototype and pass it to
-            // patchOnProperties method
-            proxySocketProto = socket;
-            ['addEventListener', 'removeEventListener', 'send', 'close'].forEach(function (propName) {
-                proxySocket[propName] = function () {
-                    return socket[propName].apply(socket, arguments);
-                };
-            });
+    /**
+     * @return {?}
+     */
+    AbstractFormGroupDirective.prototype.ngOnInit = function () {
+        this._checkParentType(); /** @type {?} */
+        ((this.formDirective)).addFormGroup(this);
+    };
+    /**
+     * @return {?}
+     */
+    AbstractFormGroupDirective.prototype.ngOnDestroy = function () {
+        if (this.formDirective) {
+            this.formDirective.removeFormGroup(this);
+        }
+    };
+    Object.defineProperty(AbstractFormGroupDirective.prototype, "control", {
+        /**
+         * Get the {\@link FormGroup} backing this binding.
+         * @return {?}
+         */
+        get: function () { return ((this.formDirective)).getFormGroup(this); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractFormGroupDirective.prototype, "path", {
+        /**
+         * Get the path to this control group.
+         * @return {?}
+         */
+        get: function () { return controlPath(this.name, this._parent); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractFormGroupDirective.prototype, "formDirective", {
+        /**
+         * Get the {\@link Form} to which this group belongs.
+         * @return {?}
+         */
+        get: function () { return this._parent ? this._parent.formDirective : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractFormGroupDirective.prototype, "validator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return composeValidators(this._validators); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractFormGroupDirective.prototype, "asyncValidator", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return composeAsyncValidators(this._asyncValidators);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * \@internal
+     * @return {?}
+     */
+    AbstractFormGroupDirective.prototype._checkParentType = function () { };
+    return AbstractFormGroupDirective;
+}(ControlContainer));
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var AbstractControlStatus = (function () {
+    /**
+     * @param {?} cd
+     */
+    function AbstractControlStatus(cd) {
+        this._cd = cd;
+    }
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassUntouched", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.untouched : false; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassTouched", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.touched : false; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassPristine", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.pristine : false; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassDirty", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.dirty : false; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassValid", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.valid : false; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassInvalid", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.invalid : false; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControlStatus.prototype, "ngClassPending", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._cd.control ? this._cd.control.pending : false; },
+        enumerable: true,
+        configurable: true
+    });
+    return AbstractControlStatus;
+}());
+var ngControlStatusHost = {
+    '[class.ng-untouched]': 'ngClassUntouched',
+    '[class.ng-touched]': 'ngClassTouched',
+    '[class.ng-pristine]': 'ngClassPristine',
+    '[class.ng-dirty]': 'ngClassDirty',
+    '[class.ng-valid]': 'ngClassValid',
+    '[class.ng-invalid]': 'ngClassInvalid',
+    '[class.ng-pending]': 'ngClassPending',
+};
+/**
+ * Directive automatically applied to Angular form controls that sets CSS classes
+ * based on control status. The following classes are applied as the properties
+ * become true:
+ *
+ * * ng-valid
+ * * ng-invalid
+ * * ng-pending
+ * * ng-pristine
+ * * ng-dirty
+ * * ng-untouched
+ * * ng-touched
+ *
+ * \@stable
+ */
+var NgControlStatus = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](NgControlStatus, _super);
+    /**
+     * @param {?} cd
+     */
+    function NgControlStatus(cd) {
+        return _super.call(this, cd) || this;
+    }
+    return NgControlStatus;
+}(AbstractControlStatus));
+NgControlStatus.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: '[formControlName],[ngModel],[formControl]', host: ngControlStatusHost },] },
+];
+/**
+ * @nocollapse
+ */
+NgControlStatus.ctorParameters = function () { return [
+    { type: NgControl, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] },] },
+]; };
+/**
+ * Directive automatically applied to Angular form groups that sets CSS classes
+ * based on control status (valid/invalid/dirty/etc).
+ *
+ * \@stable
+ */
+var NgControlStatusGroup = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](NgControlStatusGroup, _super);
+    /**
+     * @param {?} cd
+     */
+    function NgControlStatusGroup(cd) {
+        return _super.call(this, cd) || this;
+    }
+    return NgControlStatusGroup;
+}(AbstractControlStatus));
+NgControlStatusGroup.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[formGroupName],[formArrayName],[ngModelGroup],[formGroup],form:not([ngNoForm]),[ngForm]',
+                host: ngControlStatusHost
+            },] },
+];
+/**
+ * @nocollapse
+ */
+NgControlStatusGroup.ctorParameters = function () { return [
+    { type: ControlContainer, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] },] },
+]; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * Indicates that a FormControl is valid, i.e. that no errors exist in the input value.
+ */
+var VALID = 'VALID';
+/**
+ * Indicates that a FormControl is invalid, i.e. that an error exists in the input value.
+ */
+var INVALID = 'INVALID';
+/**
+ * Indicates that a FormControl is pending, i.e. that async validation is occurring and
+ * errors are not yet available for the input value.
+ */
+var PENDING = 'PENDING';
+/**
+ * Indicates that a FormControl is disabled, i.e. that the control is exempt from ancestor
+ * calculations of validity or value.
+ */
+var DISABLED = 'DISABLED';
+/**
+ * @param {?} control
+ * @param {?} path
+ * @param {?} delimiter
+ * @return {?}
+ */
+function _find(control, path, delimiter) {
+    if (path == null)
+        return null;
+    if (!(path instanceof Array)) {
+        path = ((path)).split(delimiter);
+    }
+    if (path instanceof Array && (path.length === 0))
+        return null;
+    return ((path)).reduce(function (v, name) {
+        if (v instanceof FormGroup) {
+            return v.controls[name] || null;
+        }
+        if (v instanceof FormArray) {
+            return v.at(/** @type {?} */ (name)) || null;
+        }
+        return null;
+    }, control);
+}
+/**
+ * @param {?=} validator
+ * @return {?}
+ */
+function coerceToValidator(validator) {
+    return Array.isArray(validator) ? composeValidators(validator) : validator || null;
+}
+/**
+ * @param {?=} asyncValidator
+ * @return {?}
+ */
+function coerceToAsyncValidator(asyncValidator) {
+    return Array.isArray(asyncValidator) ? composeAsyncValidators(asyncValidator) :
+        asyncValidator || null;
+}
+/**
+ * \@whatItDoes This is the base class for {\@link FormControl}, {\@link FormGroup}, and
+ * {\@link FormArray}.
+ *
+ * It provides some of the shared behavior that all controls and groups of controls have, like
+ * running validators, calculating status, and resetting state. It also defines the properties
+ * that are shared between all sub-classes, like `value`, `valid`, and `dirty`. It shouldn't be
+ * instantiated directly.
+ *
+ * \@stable
+ * @abstract
+ */
+var AbstractControl = (function () {
+    /**
+     * @param {?} validator
+     * @param {?} asyncValidator
+     */
+    function AbstractControl(validator, asyncValidator) {
+        this.validator = validator;
+        this.asyncValidator = asyncValidator;
+        /**
+         * \@internal
+         */
+        this._onCollectionChange = function () { };
+        this._pristine = true;
+        this._touched = false;
+        /**
+         * \@internal
+         */
+        this._onDisabledChange = [];
+    }
+    Object.defineProperty(AbstractControl.prototype, "value", {
+        /**
+         * The value of the control.
+         * @return {?}
+         */
+        get: function () { return this._value; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "parent", {
+        /**
+         * The parent control.
+         * @return {?}
+         */
+        get: function () { return this._parent; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "status", {
+        /**
+         * The validation status of the control. There are four possible
+         * validation statuses:
+         *
+         * * **VALID**:  control has passed all validation checks
+         * * **INVALID**: control has failed at least one validation check
+         * * **PENDING**: control is in the midst of conducting a validation check
+         * * **DISABLED**: control is exempt from validation checks
+         *
+         * These statuses are mutually exclusive, so a control cannot be
+         * both valid AND invalid or invalid AND disabled.
+         * @return {?}
+         */
+        get: function () { return this._status; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "valid", {
+        /**
+         * A control is `valid` when its `status === VALID`.
+         *
+         * In order to have this status, the control must have passed all its
+         * validation checks.
+         * @return {?}
+         */
+        get: function () { return this._status === VALID; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "invalid", {
+        /**
+         * A control is `invalid` when its `status === INVALID`.
+         *
+         * In order to have this status, the control must have failed
+         * at least one of its validation checks.
+         * @return {?}
+         */
+        get: function () { return this._status === INVALID; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "pending", {
+        /**
+         * A control is `pending` when its `status === PENDING`.
+         *
+         * In order to have this status, the control must be in the
+         * middle of conducting a validation check.
+         * @return {?}
+         */
+        get: function () { return this._status == PENDING; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "disabled", {
+        /**
+         * A control is `disabled` when its `status === DISABLED`.
+         *
+         * Disabled controls are exempt from validation checks and
+         * are not included in the aggregate value of their ancestor
+         * controls.
+         * @return {?}
+         */
+        get: function () { return this._status === DISABLED; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "enabled", {
+        /**
+         * A control is `enabled` as long as its `status !== DISABLED`.
+         *
+         * In other words, it has a status of `VALID`, `INVALID`, or
+         * `PENDING`.
+         * @return {?}
+         */
+        get: function () { return this._status !== DISABLED; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "errors", {
+        /**
+         * Returns any errors generated by failing validation. If there
+         * are no errors, it will return null.
+         * @return {?}
+         */
+        get: function () { return this._errors; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "pristine", {
+        /**
+         * A control is `pristine` if the user has not yet changed
+         * the value in the UI.
+         *
+         * Note that programmatic changes to a control's value will
+         * *not* mark it dirty.
+         * @return {?}
+         */
+        get: function () { return this._pristine; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "dirty", {
+        /**
+         * A control is `dirty` if the user has changed the value
+         * in the UI.
+         *
+         * Note that programmatic changes to a control's value will
+         * *not* mark it dirty.
+         * @return {?}
+         */
+        get: function () { return !this.pristine; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "touched", {
+        /**
+         * A control is marked `touched` once the user has triggered
+         * a `blur` event on it.
+         * @return {?}
+         */
+        get: function () { return this._touched; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "untouched", {
+        /**
+         * A control is `untouched` if the user has not yet triggered
+         * a `blur` event on it.
+         * @return {?}
+         */
+        get: function () { return !this._touched; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "valueChanges", {
+        /**
+         * Emits an event every time the value of the control changes, in
+         * the UI or programmatically.
+         * @return {?}
+         */
+        get: function () { return this._valueChanges; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AbstractControl.prototype, "statusChanges", {
+        /**
+         * Emits an event every time the validation status of the control
+         * is re-calculated.
+         * @return {?}
+         */
+        get: function () { return this._statusChanges; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * Sets the synchronous validators that are active on this control.  Calling
+     * this will overwrite any existing sync validators.
+     * @param {?} newValidator
+     * @return {?}
+     */
+    AbstractControl.prototype.setValidators = function (newValidator) {
+        this.validator = coerceToValidator(newValidator);
+    };
+    /**
+     * Sets the async validators that are active on this control. Calling this
+     * will overwrite any existing async validators.
+     * @param {?} newValidator
+     * @return {?}
+     */
+    AbstractControl.prototype.setAsyncValidators = function (newValidator) {
+        this.asyncValidator = coerceToAsyncValidator(newValidator);
+    };
+    /**
+     * Empties out the sync validator list.
+     * @return {?}
+     */
+    AbstractControl.prototype.clearValidators = function () { this.validator = null; };
+    /**
+     * Empties out the async validator list.
+     * @return {?}
+     */
+    AbstractControl.prototype.clearAsyncValidators = function () { this.asyncValidator = null; };
+    /**
+     * Marks the control as `touched`.
+     *
+     * This will also mark all direct ancestors as `touched` to maintain
+     * the model.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.markAsTouched = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._touched = true;
+        if (this._parent && !opts.onlySelf) {
+            this._parent.markAsTouched(opts);
+        }
+    };
+    /**
+     * Marks the control as `untouched`.
+     *
+     * If the control has any children, it will also mark all children as `untouched`
+     * to maintain the model, and re-calculate the `touched` status of all parent
+     * controls.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.markAsUntouched = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._touched = false;
+        this._forEachChild(function (control) { control.markAsUntouched({ onlySelf: true }); });
+        if (this._parent && !opts.onlySelf) {
+            this._parent._updateTouched(opts);
+        }
+    };
+    /**
+     * Marks the control as `dirty`.
+     *
+     * This will also mark all direct ancestors as `dirty` to maintain
+     * the model.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.markAsDirty = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._pristine = false;
+        if (this._parent && !opts.onlySelf) {
+            this._parent.markAsDirty(opts);
+        }
+    };
+    /**
+     * Marks the control as `pristine`.
+     *
+     * If the control has any children, it will also mark all children as `pristine`
+     * to maintain the model, and re-calculate the `pristine` status of all parent
+     * controls.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.markAsPristine = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._pristine = true;
+        this._forEachChild(function (control) { control.markAsPristine({ onlySelf: true }); });
+        if (this._parent && !opts.onlySelf) {
+            this._parent._updatePristine(opts);
+        }
+    };
+    /**
+     * Marks the control as `pending`.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.markAsPending = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._status = PENDING;
+        if (this._parent && !opts.onlySelf) {
+            this._parent.markAsPending(opts);
+        }
+    };
+    /**
+     * Disables the control. This means the control will be exempt from validation checks and
+     * excluded from the aggregate value of any parent. Its status is `DISABLED`.
+     *
+     * If the control has children, all children will be disabled to maintain the model.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.disable = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._status = DISABLED;
+        this._errors = null;
+        this._forEachChild(function (control) { control.disable({ onlySelf: true }); });
+        this._updateValue();
+        if (opts.emitEvent !== false) {
+            this._valueChanges.emit(this._value);
+            this._statusChanges.emit(this._status);
+        }
+        this._updateAncestors(!!opts.onlySelf);
+        this._onDisabledChange.forEach(function (changeFn) { return changeFn(true); });
+    };
+    /**
+     * Enables the control. This means the control will be included in validation checks and
+     * the aggregate value of its parent. Its status is re-calculated based on its value and
+     * its validators.
+     *
+     * If the control has children, all children will be enabled.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.enable = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._status = VALID;
+        this._forEachChild(function (control) { control.enable({ onlySelf: true }); });
+        this.updateValueAndValidity({ onlySelf: true, emitEvent: opts.emitEvent });
+        this._updateAncestors(!!opts.onlySelf);
+        this._onDisabledChange.forEach(function (changeFn) { return changeFn(false); });
+    };
+    /**
+     * @param {?} onlySelf
+     * @return {?}
+     */
+    AbstractControl.prototype._updateAncestors = function (onlySelf) {
+        if (this._parent && !onlySelf) {
+            this._parent.updateValueAndValidity();
+            this._parent._updatePristine();
+            this._parent._updateTouched();
+        }
+    };
+    /**
+     * @param {?} parent
+     * @return {?}
+     */
+    AbstractControl.prototype.setParent = function (parent) { this._parent = parent; };
+    /**
+     * Sets the value of the control. Abstract method (implemented in sub-classes).
+     * @abstract
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    AbstractControl.prototype.setValue = function (value, options) { };
+    /**
+     * Patches the value of the control. Abstract method (implemented in sub-classes).
+     * @abstract
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    AbstractControl.prototype.patchValue = function (value, options) { };
+    /**
+     * Resets the control. Abstract method (implemented in sub-classes).
+     * @abstract
+     * @param {?=} value
+     * @param {?=} options
+     * @return {?}
+     */
+    AbstractControl.prototype.reset = function (value, options) { };
+    /**
+     * Re-calculates the value and validation status of the control.
+     *
+     * By default, it will also update the value and validity of its ancestors.
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.updateValueAndValidity = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._setInitialStatus();
+        this._updateValue();
+        if (this.enabled) {
+            this._cancelExistingSubscription();
+            this._errors = this._runValidator();
+            this._status = this._calculateStatus();
+            if (this._status === VALID || this._status === PENDING) {
+                this._runAsyncValidator(opts.emitEvent);
+            }
+        }
+        if (opts.emitEvent !== false) {
+            this._valueChanges.emit(this._value);
+            this._statusChanges.emit(this._status);
+        }
+        if (this._parent && !opts.onlySelf) {
+            this._parent.updateValueAndValidity(opts);
+        }
+    };
+    /**
+     * \@internal
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype._updateTreeValidity = function (opts) {
+        if (opts === void 0) { opts = { emitEvent: true }; }
+        this._forEachChild(function (ctrl) { return ctrl._updateTreeValidity(opts); });
+        this.updateValueAndValidity({ onlySelf: true, emitEvent: opts.emitEvent });
+    };
+    /**
+     * @return {?}
+     */
+    AbstractControl.prototype._setInitialStatus = function () { this._status = this._allControlsDisabled() ? DISABLED : VALID; };
+    /**
+     * @return {?}
+     */
+    AbstractControl.prototype._runValidator = function () {
+        return this.validator ? this.validator(this) : null;
+    };
+    /**
+     * @param {?=} emitEvent
+     * @return {?}
+     */
+    AbstractControl.prototype._runAsyncValidator = function (emitEvent) {
+        var _this = this;
+        if (this.asyncValidator) {
+            this._status = PENDING;
+            var /** @type {?} */ obs = toObservable(this.asyncValidator(this));
+            this._asyncValidationSubscription =
+                obs.subscribe(function (errors) { return _this.setErrors(errors, { emitEvent: emitEvent }); });
+        }
+    };
+    /**
+     * @return {?}
+     */
+    AbstractControl.prototype._cancelExistingSubscription = function () {
+        if (this._asyncValidationSubscription) {
+            this._asyncValidationSubscription.unsubscribe();
+        }
+    };
+    /**
+     * Sets errors on a form control.
+     *
+     * This is used when validations are run manually by the user, rather than automatically.
+     *
+     * Calling `setErrors` will also update the validity of the parent control.
+     *
+     * ### Example
+     *
+     * ```
+     * const login = new FormControl("someLogin");
+     * login.setErrors({
+     *   "notUnique": true
+     * });
+     *
+     * expect(login.valid).toEqual(false);
+     * expect(login.errors).toEqual({"notUnique": true});
+     *
+     * login.setValue("someOtherLogin");
+     *
+     * expect(login.valid).toEqual(true);
+     * ```
+     * @param {?} errors
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype.setErrors = function (errors, opts) {
+        if (opts === void 0) { opts = {}; }
+        this._errors = errors;
+        this._updateControlsErrors(opts.emitEvent !== false);
+    };
+    /**
+     * Retrieves a child control given the control's name or path.
+     *
+     * Paths can be passed in as an array or a string delimited by a dot.
+     *
+     * To get a control nested within a `person` sub-group:
+     *
+     * * `this.form.get('person.name');`
+     *
+     * -OR-
+     *
+     * * `this.form.get(['person', 'name']);`
+     * @param {?} path
+     * @return {?}
+     */
+    AbstractControl.prototype.get = function (path) { return _find(this, path, '.'); };
+    /**
+     * Returns error data if the control with the given path has the error specified. Otherwise
+     * returns null or undefined.
+     *
+     * If no path is given, it checks for the error on the present control.
+     * @param {?} errorCode
+     * @param {?=} path
+     * @return {?}
+     */
+    AbstractControl.prototype.getError = function (errorCode, path) {
+        var /** @type {?} */ control = path ? this.get(path) : this;
+        return control && control._errors ? control._errors[errorCode] : null;
+    };
+    /**
+     * Returns true if the control with the given path has the error specified. Otherwise
+     * returns false.
+     *
+     * If no path is given, it checks for the error on the present control.
+     * @param {?} errorCode
+     * @param {?=} path
+     * @return {?}
+     */
+    AbstractControl.prototype.hasError = function (errorCode, path) { return !!this.getError(errorCode, path); };
+    Object.defineProperty(AbstractControl.prototype, "root", {
+        /**
+         * Retrieves the top-level ancestor of this control.
+         * @return {?}
+         */
+        get: function () {
+            var /** @type {?} */ x = this;
+            while (x._parent) {
+                x = x._parent;
+            }
+            return x;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * \@internal
+     * @param {?} emitEvent
+     * @return {?}
+     */
+    AbstractControl.prototype._updateControlsErrors = function (emitEvent) {
+        this._status = this._calculateStatus();
+        if (emitEvent) {
+            this._statusChanges.emit(this._status);
+        }
+        if (this._parent) {
+            this._parent._updateControlsErrors(emitEvent);
+        }
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    AbstractControl.prototype._initObservables = function () {
+        this._valueChanges = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+        this._statusChanges = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+    };
+    /**
+     * @return {?}
+     */
+    AbstractControl.prototype._calculateStatus = function () {
+        if (this._allControlsDisabled())
+            return DISABLED;
+        if (this._errors)
+            return INVALID;
+        if (this._anyControlsHaveStatus(PENDING))
+            return PENDING;
+        if (this._anyControlsHaveStatus(INVALID))
+            return INVALID;
+        return VALID;
+    };
+    /**
+     * \@internal
+     * @abstract
+     * @return {?}
+     */
+    AbstractControl.prototype._updateValue = function () { };
+    /**
+     * \@internal
+     * @abstract
+     * @param {?} cb
+     * @return {?}
+     */
+    AbstractControl.prototype._forEachChild = function (cb) { };
+    /**
+     * \@internal
+     * @abstract
+     * @param {?} condition
+     * @return {?}
+     */
+    AbstractControl.prototype._anyControls = function (condition) { };
+    /**
+     * \@internal
+     * @abstract
+     * @return {?}
+     */
+    AbstractControl.prototype._allControlsDisabled = function () { };
+    /**
+     * \@internal
+     * @param {?} status
+     * @return {?}
+     */
+    AbstractControl.prototype._anyControlsHaveStatus = function (status) {
+        return this._anyControls(function (control) { return control.status === status; });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    AbstractControl.prototype._anyControlsDirty = function () {
+        return this._anyControls(function (control) { return control.dirty; });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    AbstractControl.prototype._anyControlsTouched = function () {
+        return this._anyControls(function (control) { return control.touched; });
+    };
+    /**
+     * \@internal
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype._updatePristine = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._pristine = !this._anyControlsDirty();
+        if (this._parent && !opts.onlySelf) {
+            this._parent._updatePristine(opts);
+        }
+    };
+    /**
+     * \@internal
+     * @param {?=} opts
+     * @return {?}
+     */
+    AbstractControl.prototype._updateTouched = function (opts) {
+        if (opts === void 0) { opts = {}; }
+        this._touched = this._anyControlsTouched();
+        if (this._parent && !opts.onlySelf) {
+            this._parent._updateTouched(opts);
+        }
+    };
+    /**
+     * \@internal
+     * @param {?} formState
+     * @return {?}
+     */
+    AbstractControl.prototype._isBoxedValue = function (formState) {
+        return typeof formState === 'object' && formState !== null &&
+            Object.keys(formState).length === 2 && 'value' in formState && 'disabled' in formState;
+    };
+    /**
+     * \@internal
+     * @param {?} fn
+     * @return {?}
+     */
+    AbstractControl.prototype._registerOnCollectionChange = function (fn) { this._onCollectionChange = fn; };
+    return AbstractControl;
+}());
+/**
+ * \@whatItDoes Tracks the value and validation status of an individual form control.
+ *
+ * It is one of the three fundamental building blocks of Angular forms, along with
+ * {\@link FormGroup} and {\@link FormArray}.
+ *
+ * \@howToUse
+ *
+ * When instantiating a {\@link FormControl}, you can pass in an initial value as the
+ * first argument. Example:
+ *
+ * ```ts
+ * const ctrl = new FormControl('some value');
+ * console.log(ctrl.value);     // 'some value'
+ * ```
+ *
+ * You can also initialize the control with a form state object on instantiation,
+ * which includes both the value and whether or not the control is disabled.
+ * You can't use the value key without the disabled key; both are required
+ * to use this way of initialization.
+ *
+ * ```ts
+ * const ctrl = new FormControl({value: 'n/a', disabled: true});
+ * console.log(ctrl.value);     // 'n/a'
+ * console.log(ctrl.status);   // 'DISABLED'
+ * ```
+ *
+ * To include a sync validator (or an array of sync validators) with the control,
+ * pass it in as the second argument. Async validators are also supported, but
+ * have to be passed in separately as the third arg.
+ *
+ * ```ts
+ * const ctrl = new FormControl('', Validators.required);
+ * console.log(ctrl.value);     // ''
+ * console.log(ctrl.status);   // 'INVALID'
+ * ```
+ *
+ * See its superclass, {\@link AbstractControl}, for more properties and methods.
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * \@stable
+ */
+var FormControl = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormControl, _super);
+    /**
+     * @param {?=} formState
+     * @param {?=} validator
+     * @param {?=} asyncValidator
+     */
+    function FormControl(formState, validator, asyncValidator) {
+        if (formState === void 0) { formState = null; }
+        var _this = _super.call(this, coerceToValidator(validator), coerceToAsyncValidator(asyncValidator)) || this;
+        /**
+         * \@internal
+         */
+        _this._onChange = [];
+        _this._applyFormState(formState);
+        _this.updateValueAndValidity({ onlySelf: true, emitEvent: false });
+        _this._initObservables();
+        return _this;
+    }
+    /**
+     * Set the value of the form control to `value`.
+     *
+     * If `onlySelf` is `true`, this change will only affect the validation of this `FormControl`
+     * and not its parent component. This defaults to false.
+     *
+     * If `emitEvent` is `true`, this
+     * change will cause a `valueChanges` event on the `FormControl` to be emitted. This defaults
+     * to true (as it falls through to `updateValueAndValidity`).
+     *
+     * If `emitModelToViewChange` is `true`, the view will be notified about the new value
+     * via an `onChange` event. This is the default behavior if `emitModelToViewChange` is not
+     * specified.
+     *
+     * If `emitViewToModelChange` is `true`, an ngModelChange event will be fired to update the
+     * model.  This is the default behavior if `emitViewToModelChange` is not specified.
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormControl.prototype.setValue = function (value, options) {
+        var _this = this;
+        if (options === void 0) { options = {}; }
+        this._value = value;
+        if (this._onChange.length && options.emitModelToViewChange !== false) {
+            this._onChange.forEach(function (changeFn) { return changeFn(_this._value, options.emitViewToModelChange !== false); });
+        }
+        this.updateValueAndValidity(options);
+    };
+    /**
+     * Patches the value of a control.
+     *
+     * This function is functionally the same as {\@link FormControl#setValue} at this level.
+     * It exists for symmetry with {\@link FormGroup#patchValue} on `FormGroups` and `FormArrays`,
+     * where it does behave differently.
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormControl.prototype.patchValue = function (value, options) {
+        if (options === void 0) { options = {}; }
+        this.setValue(value, options);
+    };
+    /**
+     * Resets the form control. This means by default:
+     *
+     * * it is marked as `pristine`
+     * * it is marked as `untouched`
+     * * value is set to null
+     *
+     * You can also reset to a specific form state by passing through a standalone
+     * value or a form state object that contains both a value and a disabled state
+     * (these are the only two properties that cannot be calculated).
+     *
+     * Ex:
+     *
+     * ```ts
+     * this.control.reset('Nancy');
+     *
+     * console.log(this.control.value);  // 'Nancy'
+     * ```
+     *
+     * OR
+     *
+     * ```
+     * this.control.reset({value: 'Nancy', disabled: true});
+     *
+     * console.log(this.control.value);  // 'Nancy'
+     * console.log(this.control.status);  // 'DISABLED'
+     * ```
+     * @param {?=} formState
+     * @param {?=} options
+     * @return {?}
+     */
+    FormControl.prototype.reset = function (formState, options) {
+        if (formState === void 0) { formState = null; }
+        if (options === void 0) { options = {}; }
+        this._applyFormState(formState);
+        this.markAsPristine(options);
+        this.markAsUntouched(options);
+        this.setValue(this._value, options);
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormControl.prototype._updateValue = function () { };
+    /**
+     * \@internal
+     * @param {?} condition
+     * @return {?}
+     */
+    FormControl.prototype._anyControls = function (condition) { return false; };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormControl.prototype._allControlsDisabled = function () { return this.disabled; };
+    /**
+     * Register a listener for change events.
+     * @param {?} fn
+     * @return {?}
+     */
+    FormControl.prototype.registerOnChange = function (fn) { this._onChange.push(fn); };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormControl.prototype._clearChangeFns = function () {
+        this._onChange = [];
+        this._onDisabledChange = [];
+        this._onCollectionChange = function () { };
+    };
+    /**
+     * Register a listener for disabled events.
+     * @param {?} fn
+     * @return {?}
+     */
+    FormControl.prototype.registerOnDisabledChange = function (fn) {
+        this._onDisabledChange.push(fn);
+    };
+    /**
+     * \@internal
+     * @param {?} cb
+     * @return {?}
+     */
+    FormControl.prototype._forEachChild = function (cb) { };
+    /**
+     * @param {?} formState
+     * @return {?}
+     */
+    FormControl.prototype._applyFormState = function (formState) {
+        if (this._isBoxedValue(formState)) {
+            this._value = formState.value;
+            formState.disabled ? this.disable({ onlySelf: true, emitEvent: false }) :
+                this.enable({ onlySelf: true, emitEvent: false });
         }
         else {
-            // we can patch the real socket
-            proxySocket = socket;
+            this._value = formState;
         }
-        patchOnProperties(proxySocket, ['close', 'error', 'message', 'open'], proxySocketProto);
-        return proxySocket;
     };
-    for (var prop in WS) {
-        _global['WebSocket'][prop] = WS[prop];
-    }
-}
-
+    return FormControl;
+}(AbstractControl));
 /**
- * @license
- * Copyright Google Inc. All Rights Reserved.
+ * \@whatItDoes Tracks the value and validity state of a group of {\@link FormControl}
+ * instances.
  *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * A `FormGroup` aggregates the values of each child {\@link FormControl} into one object,
+ * with each control name as the key.  It calculates its status by reducing the statuses
+ * of its children. For example, if one of the controls in a group is invalid, the entire
+ * group becomes invalid.
+ *
+ * `FormGroup` is one of the three fundamental building blocks used to define forms in Angular,
+ * along with {\@link FormControl} and {\@link FormArray}.
+ *
+ * \@howToUse
+ *
+ * When instantiating a {\@link FormGroup}, pass in a collection of child controls as the first
+ * argument. The key for each child will be the name under which it is registered.
+ *
+ * ### Example
+ *
+ * ```
+ * const form = new FormGroup({
+ *   first: new FormControl('Nancy', Validators.minLength(2)),
+ *   last: new FormControl('Drew'),
+ * });
+ *
+ * console.log(form.value);   // {first: 'Nancy', last; 'Drew'}
+ * console.log(form.status);  // 'VALID'
+ * ```
+ *
+ * You can also include group-level validators as the second arg, or group-level async
+ * validators as the third arg. These come in handy when you want to perform validation
+ * that considers the value of more than one child control.
+ *
+ * ### Example
+ *
+ * ```
+ * const form = new FormGroup({
+ *   password: new FormControl('', Validators.minLength(2)),
+ *   passwordConfirm: new FormControl('', Validators.minLength(2)),
+ * }, passwordMatchValidator);
+ *
+ *
+ * function passwordMatchValidator(g: FormGroup) {
+ *    return g.get('password').value === g.get('passwordConfirm').value
+ *       ? null : {'mismatch': true};
+ * }
+ * ```
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * \@stable
  */
-var globalEventHandlersEventNames = [
-    'abort',
-    'animationcancel',
-    'animationend',
-    'animationiteration',
-    'auxclick',
-    'beforeinput',
-    'blur',
-    'cancel',
-    'canplay',
-    'canplaythrough',
-    'change',
-    'compositionstart',
-    'compositionupdate',
-    'compositionend',
-    'cuechange',
-    'click',
-    'close',
-    'contextmenu',
-    'curechange',
-    'dblclick',
-    'drag',
-    'dragend',
-    'dragenter',
-    'dragexit',
-    'dragleave',
-    'dragover',
-    'drop',
-    'durationchange',
-    'emptied',
-    'ended',
-    'error',
-    'focus',
-    'focusin',
-    'focusout',
-    'gotpointercapture',
-    'input',
-    'invalid',
-    'keydown',
-    'keypress',
-    'keyup',
-    'load',
-    'loadstart',
-    'loadeddata',
-    'loadedmetadata',
-    'lostpointercapture',
-    'mousedown',
-    'mouseenter',
-    'mouseleave',
-    'mousemove',
-    'mouseout',
-    'mouseover',
-    'mouseup',
-    'mousewheel',
-    'pause',
-    'play',
-    'playing',
-    'pointercancel',
-    'pointerdown',
-    'pointerenter',
-    'pointerleave',
-    'pointerlockchange',
-    'mozpointerlockchange',
-    'webkitpointerlockerchange',
-    'pointerlockerror',
-    'mozpointerlockerror',
-    'webkitpointerlockerror',
-    'pointermove',
-    'pointout',
-    'pointerover',
-    'pointerup',
-    'progress',
-    'ratechange',
-    'reset',
-    'resize',
-    'scroll',
-    'seeked',
-    'seeking',
-    'select',
-    'selectionchange',
-    'selectstart',
-    'show',
-    'sort',
-    'stalled',
-    'submit',
-    'suspend',
-    'timeupdate',
-    'volumechange',
-    'touchcancel',
-    'touchmove',
-    'touchstart',
-    'transitioncancel',
-    'transitionend',
-    'waiting',
-    'wheel'
-];
-var documentEventNames = [
-    'afterscriptexecute', 'beforescriptexecute', 'DOMContentLoaded', 'fullscreenchange',
-    'mozfullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange', 'fullscreenerror',
-    'mozfullscreenerror', 'webkitfullscreenerror', 'msfullscreenerror', 'readystatechange'
-];
-var windowEventNames = [
-    'absolutedeviceorientation',
-    'afterinput',
-    'afterprint',
-    'appinstalled',
-    'beforeinstallprompt',
-    'beforeprint',
-    'beforeunload',
-    'devicelight',
-    'devicemotion',
-    'deviceorientation',
-    'deviceorientationabsolute',
-    'deviceproximity',
-    'hashchange',
-    'languagechange',
-    'message',
-    'mozbeforepaint',
-    'offline',
-    'online',
-    'paint',
-    'pageshow',
-    'pagehide',
-    'popstate',
-    'rejectionhandled',
-    'storage',
-    'unhandledrejection',
-    'unload',
-    'userproximity',
-    'vrdisplyconnected',
-    'vrdisplaydisconnected',
-    'vrdisplaypresentchange'
-];
-var htmlElementEventNames = [
-    'beforecopy', 'beforecut', 'beforepaste', 'copy', 'cut', 'paste', 'dragstart', 'loadend',
-    'animationstart', 'search', 'transitionrun', 'transitionstart', 'webkitanimationend',
-    'webkitanimationiteration', 'webkitanimationstart', 'webkittransitionend'
-];
-var mediaElementEventNames = ['encrypted', 'waitingforkey', 'msneedkey', 'mozinterruptbegin', 'mozinterruptend'];
-var ieElementEventNames = [
-    'activate',
-    'afterupdate',
-    'ariarequest',
-    'beforeactivate',
-    'beforedeactivate',
-    'beforeeditfocus',
-    'beforeupdate',
-    'cellchange',
-    'controlselect',
-    'dataavailable',
-    'datasetchanged',
-    'datasetcomplete',
-    'errorupdate',
-    'filterchange',
-    'layoutcomplete',
-    'losecapture',
-    'move',
-    'moveend',
-    'movestart',
-    'propertychange',
-    'resizeend',
-    'resizestart',
-    'rowenter',
-    'rowexit',
-    'rowsdelete',
-    'rowsinserted',
-    'command',
-    'compassneedscalibration',
-    'deactivate',
-    'help',
-    'mscontentzoom',
-    'msmanipulationstatechanged',
-    'msgesturechange',
-    'msgesturedoubletap',
-    'msgestureend',
-    'msgesturehold',
-    'msgesturestart',
-    'msgesturetap',
-    'msgotpointercapture',
-    'msinertiastart',
-    'mslostpointercapture',
-    'mspointercancel',
-    'mspointerdown',
-    'mspointerenter',
-    'mspointerhover',
-    'mspointerleave',
-    'mspointermove',
-    'mspointerout',
-    'mspointerover',
-    'mspointerup',
-    'pointerout',
-    'mssitemodejumplistitemremoved',
-    'msthumbnailclick',
-    'stop',
-    'storagecommit'
-];
-var webglEventNames = ['webglcontextrestored', 'webglcontextlost', 'webglcontextcreationerror'];
-var formEventNames = ['autocomplete', 'autocompleteerror'];
-var detailEventNames = ['toggle'];
-var frameEventNames = ['load'];
-var frameSetEventNames = ['blur', 'error', 'focus', 'load', 'resize', 'scroll'];
-var marqueeEventNames = ['bounce', 'finish', 'start'];
-var XMLHttpRequestEventNames = [
-    'loadstart', 'progress', 'abort', 'error', 'load', 'progress', 'timeout', 'loadend',
-    'readystatechange'
-];
-var IDBIndexEventNames = ['upgradeneeded', 'complete', 'abort', 'success', 'error', 'blocked', 'versionchange', 'close'];
-var websocketEventNames = ['close', 'error', 'open', 'message'];
-var eventNames = globalEventHandlersEventNames.concat(webglEventNames, formEventNames, detailEventNames, documentEventNames, windowEventNames, htmlElementEventNames, ieElementEventNames);
-function propertyDescriptorPatch(api, _global) {
-    if (isNode && !isMix) {
-        return;
+var FormGroup = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormGroup, _super);
+    /**
+     * @param {?} controls
+     * @param {?=} validator
+     * @param {?=} asyncValidator
+     */
+    function FormGroup(controls, validator, asyncValidator) {
+        var _this = _super.call(this, validator || null, asyncValidator || null) || this;
+        _this.controls = controls;
+        _this._initObservables();
+        _this._setUpControls();
+        _this.updateValueAndValidity({ onlySelf: true, emitEvent: false });
+        return _this;
     }
-    var supportsWebSocket = typeof WebSocket !== 'undefined';
-    if (canPatchViaPropertyDescriptor()) {
-        // for browsers that we can patch the descriptor:  Chrome & Firefox
-        if (isBrowser) {
-            // in IE/Edge, onProp not exist in window object, but in WindowPrototype
-            // so we need to pass WindowPrototype to check onProp exist or not
-            patchOnProperties(window, eventNames, Object.getPrototypeOf(window));
-            patchOnProperties(Document.prototype, eventNames);
-            if (typeof window['SVGElement'] !== 'undefined') {
-                patchOnProperties(window['SVGElement'].prototype, eventNames);
-            }
-            patchOnProperties(Element.prototype, eventNames);
-            patchOnProperties(HTMLElement.prototype, eventNames);
-            patchOnProperties(HTMLMediaElement.prototype, mediaElementEventNames);
-            patchOnProperties(HTMLFrameSetElement.prototype, windowEventNames.concat(frameSetEventNames));
-            patchOnProperties(HTMLBodyElement.prototype, windowEventNames.concat(frameSetEventNames));
-            patchOnProperties(HTMLFrameElement.prototype, frameEventNames);
-            patchOnProperties(HTMLIFrameElement.prototype, frameEventNames);
-            var HTMLMarqueeElement_1 = window['HTMLMarqueeElement'];
-            if (HTMLMarqueeElement_1) {
-                patchOnProperties(HTMLMarqueeElement_1.prototype, marqueeEventNames);
-            }
-        }
-        patchOnProperties(XMLHttpRequest.prototype, XMLHttpRequestEventNames);
-        var XMLHttpRequestEventTarget = _global['XMLHttpRequestEventTarget'];
-        if (XMLHttpRequestEventTarget) {
-            patchOnProperties(XMLHttpRequestEventTarget && XMLHttpRequestEventTarget.prototype, XMLHttpRequestEventNames);
-        }
-        if (typeof IDBIndex !== 'undefined') {
-            patchOnProperties(IDBIndex.prototype, IDBIndexEventNames);
-            patchOnProperties(IDBRequest.prototype, IDBIndexEventNames);
-            patchOnProperties(IDBOpenDBRequest.prototype, IDBIndexEventNames);
-            patchOnProperties(IDBDatabase.prototype, IDBIndexEventNames);
-            patchOnProperties(IDBTransaction.prototype, IDBIndexEventNames);
-            patchOnProperties(IDBCursor.prototype, IDBIndexEventNames);
-        }
-        if (supportsWebSocket) {
-            patchOnProperties(WebSocket.prototype, websocketEventNames);
-        }
-    }
-    else {
-        // Safari, Android browsers (Jelly Bean)
-        patchViaCapturingAllTheEvents();
-        patchClass('XMLHttpRequest');
-        if (supportsWebSocket) {
-            apply(api, _global);
-        }
-    }
-}
-function canPatchViaPropertyDescriptor() {
-    if ((isBrowser || isMix) && !Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'onclick') &&
-        typeof Element !== 'undefined') {
-        // WebKit https://bugs.webkit.org/show_bug.cgi?id=134364
-        // IDL interface attributes are not configurable
-        var desc = Object.getOwnPropertyDescriptor(Element.prototype, 'onclick');
-        if (desc && !desc.configurable)
-            return false;
-    }
-    var xhrDesc = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'onreadystatechange');
-    // add enumerable and configurable here because in opera
-    // by default XMLHttpRequest.prototype.onreadystatechange is undefined
-    // without adding enumerable and configurable will cause onreadystatechange
-    // non-configurable
-    // and if XMLHttpRequest.prototype.onreadystatechange is undefined,
-    // we should set a real desc instead a fake one
-    if (xhrDesc) {
-        Object.defineProperty(XMLHttpRequest.prototype, 'onreadystatechange', {
-            enumerable: true,
-            configurable: true,
-            get: function () {
-                return true;
+    /**
+     * Registers a control with the group's list of controls.
+     *
+     * This method does not update value or validity of the control, so for
+     * most cases you'll want to use {\@link FormGroup#addControl} instead.
+     * @param {?} name
+     * @param {?} control
+     * @return {?}
+     */
+    FormGroup.prototype.registerControl = function (name, control) {
+        if (this.controls[name])
+            return this.controls[name];
+        this.controls[name] = control;
+        control.setParent(this);
+        control._registerOnCollectionChange(this._onCollectionChange);
+        return control;
+    };
+    /**
+     * Add a control to this group.
+     * @param {?} name
+     * @param {?} control
+     * @return {?}
+     */
+    FormGroup.prototype.addControl = function (name, control) {
+        this.registerControl(name, control);
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    /**
+     * Remove a control from this group.
+     * @param {?} name
+     * @return {?}
+     */
+    FormGroup.prototype.removeControl = function (name) {
+        if (this.controls[name])
+            this.controls[name]._registerOnCollectionChange(function () { });
+        delete (this.controls[name]);
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    /**
+     * Replace an existing control.
+     * @param {?} name
+     * @param {?} control
+     * @return {?}
+     */
+    FormGroup.prototype.setControl = function (name, control) {
+        if (this.controls[name])
+            this.controls[name]._registerOnCollectionChange(function () { });
+        delete (this.controls[name]);
+        if (control)
+            this.registerControl(name, control);
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    /**
+     * Check whether there is an enabled control with the given name in the group.
+     *
+     * It will return false for disabled controls. If you'd like to check for
+     * existence in the group only, use {\@link AbstractControl#get} instead.
+     * @param {?} controlName
+     * @return {?}
+     */
+    FormGroup.prototype.contains = function (controlName) {
+        return this.controls.hasOwnProperty(controlName) && this.controls[controlName].enabled;
+    };
+    /**
+     *  Sets the value of the {\@link FormGroup}. It accepts an object that matches
+     *  the structure of the group, with control names as keys.
+     *
+     * This method performs strict checks, so it will throw an error if you try
+     * to set the value of a control that doesn't exist or if you exclude the
+     * value of a control.
+     *
+     *  ### Example
+     *
+     *  ```
+     *  const form = new FormGroup({
+     *     first: new FormControl(),
+     *     last: new FormControl()
+     *  });
+     *  console.log(form.value);   // {first: null, last: null}
+     *
+     *  form.setValue({first: 'Nancy', last: 'Drew'});
+     *  console.log(form.value);   // {first: 'Nancy', last: 'Drew'}
+     *
+     *  ```
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormGroup.prototype.setValue = function (value, options) {
+        var _this = this;
+        if (options === void 0) { options = {}; }
+        this._checkAllValuesPresent(value);
+        Object.keys(value).forEach(function (name) {
+            _this._throwIfControlMissing(name);
+            _this.controls[name].setValue(value[name], { onlySelf: true, emitEvent: options.emitEvent });
+        });
+        this.updateValueAndValidity(options);
+    };
+    /**
+     *  Patches the value of the {\@link FormGroup}. It accepts an object with control
+     *  names as keys, and will do its best to match the values to the correct controls
+     *  in the group.
+     *
+     *  It accepts both super-sets and sub-sets of the group without throwing an error.
+     *
+     *  ### Example
+     *
+     *  ```
+     *  const form = new FormGroup({
+     *     first: new FormControl(),
+     *     last: new FormControl()
+     *  });
+     *  console.log(form.value);   // {first: null, last: null}
+     *
+     *  form.patchValue({first: 'Nancy'});
+     *  console.log(form.value);   // {first: 'Nancy', last: null}
+     *
+     *  ```
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormGroup.prototype.patchValue = function (value, options) {
+        var _this = this;
+        if (options === void 0) { options = {}; }
+        Object.keys(value).forEach(function (name) {
+            if (_this.controls[name]) {
+                _this.controls[name].patchValue(value[name], { onlySelf: true, emitEvent: options.emitEvent });
             }
         });
-        var req = new XMLHttpRequest();
-        var result = !!req.onreadystatechange;
-        // restore original desc
-        Object.defineProperty(XMLHttpRequest.prototype, 'onreadystatechange', xhrDesc || {});
-        return result;
-    }
-    else {
-        Object.defineProperty(XMLHttpRequest.prototype, 'onreadystatechange', {
-            enumerable: true,
-            configurable: true,
-            get: function () {
-                return this[zoneSymbol('fakeonreadystatechange')];
-            },
-            set: function (value) {
-                this[zoneSymbol('fakeonreadystatechange')] = value;
-            }
-        });
-        var req = new XMLHttpRequest();
-        var detectFunc = function () { };
-        req.onreadystatechange = detectFunc;
-        var result = req[zoneSymbol('fakeonreadystatechange')] === detectFunc;
-        req.onreadystatechange = null;
-        return result;
-    }
-}
-
-var unboundKey = zoneSymbol('unbound');
-// Whenever any eventListener fires, we check the eventListener target and all parents
-// for `onwhatever` properties and replace them with zone-bound functions
-// - Chrome (for now)
-function patchViaCapturingAllTheEvents() {
-    var _loop_1 = function (i) {
-        var property = eventNames[i];
-        var onproperty = 'on' + property;
-        self.addEventListener(property, function (event) {
-            var elt = event.target, bound, source;
-            if (elt) {
-                source = elt.constructor['name'] + '.' + onproperty;
-            }
-            else {
-                source = 'unknown.' + onproperty;
-            }
-            while (elt) {
-                if (elt[onproperty] && !elt[onproperty][unboundKey]) {
-                    bound = Zone.current.wrap(elt[onproperty], source);
-                    bound[unboundKey] = elt[onproperty];
-                    elt[onproperty] = bound;
-                }
-                elt = elt.parentElement;
-            }
-        }, true);
+        this.updateValueAndValidity(options);
     };
-    for (var i = 0; i < eventNames.length; i++) {
-        _loop_1(i);
-    }
-}
-
-/**
- * @license
- * Copyright Google Inc. All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-function eventTargetPatch(_global, api) {
-    var WTF_ISSUE_555 = 'Anchor,Area,Audio,BR,Base,BaseFont,Body,Button,Canvas,Content,DList,Directory,Div,Embed,FieldSet,Font,Form,Frame,FrameSet,HR,Head,Heading,Html,IFrame,Image,Input,Keygen,LI,Label,Legend,Link,Map,Marquee,Media,Menu,Meta,Meter,Mod,OList,Object,OptGroup,Option,Output,Paragraph,Pre,Progress,Quote,Script,Select,Source,Span,Style,TableCaption,TableCell,TableCol,Table,TableRow,TableSection,TextArea,Title,Track,UList,Unknown,Video';
-    var NO_EVENT_TARGET = 'ApplicationCache,EventSource,FileReader,InputMethodContext,MediaController,MessagePort,Node,Performance,SVGElementInstance,SharedWorker,TextTrack,TextTrackCue,TextTrackList,WebKitNamedFlow,Window,Worker,WorkerGlobalScope,XMLHttpRequest,XMLHttpRequestEventTarget,XMLHttpRequestUpload,IDBRequest,IDBOpenDBRequest,IDBDatabase,IDBTransaction,IDBCursor,DBIndex,WebSocket'
-        .split(',');
-    var EVENT_TARGET = 'EventTarget';
-    var apis = [];
-    var isWtf = _global['wtf'];
-    var WTF_ISSUE_555_ARRAY = WTF_ISSUE_555.split(',');
-    if (isWtf) {
-        // Workaround for: https://github.com/google/tracing-framework/issues/555
-        apis = WTF_ISSUE_555_ARRAY.map(function (v) { return 'HTML' + v + 'Element'; }).concat(NO_EVENT_TARGET);
-    }
-    else if (_global[EVENT_TARGET]) {
-        apis.push(EVENT_TARGET);
-    }
-    else {
-        // Note: EventTarget is not available in all browsers,
-        // if it's not available, we instead patch the APIs in the IDL that inherit from EventTarget
-        apis = NO_EVENT_TARGET;
-    }
-    var isDisableIECheck = _global['__Zone_disable_IE_check'] || false;
-    var isEnableCrossContextCheck = _global['__Zone_enable_cross_context_check'] || false;
-    var ieOrEdge = isIEOrEdge();
-    var ADD_EVENT_LISTENER_SOURCE = '.addEventListener:';
-    var FUNCTION_WRAPPER = '[object FunctionWrapper]';
-    var BROWSER_TOOLS = 'function __BROWSERTOOLS_CONSOLE_SAFEFUNC() { [native code] }';
-    //  predefine all __zone_symbol__ + eventName + true/false string
-    for (var i = 0; i < eventNames.length; i++) {
-        var eventName = eventNames[i];
-        var falseEventName = eventName + FALSE_STR;
-        var trueEventName = eventName + TRUE_STR;
-        var symbol = ZONE_SYMBOL_PREFIX + falseEventName;
-        var symbolCapture = ZONE_SYMBOL_PREFIX + trueEventName;
-        zoneSymbolEventNames[eventName] = {};
-        zoneSymbolEventNames[eventName][FALSE_STR] = symbol;
-        zoneSymbolEventNames[eventName][TRUE_STR] = symbolCapture;
-    }
-    //  predefine all task.source string
-    for (var i = 0; i < WTF_ISSUE_555.length; i++) {
-        var target = WTF_ISSUE_555_ARRAY[i];
-        var targets = globalSources[target] = {};
-        for (var j = 0; j < eventNames.length; j++) {
-            var eventName = eventNames[j];
-            targets[eventName] = target + ADD_EVENT_LISTENER_SOURCE + eventName;
+    /**
+     * Resets the {\@link FormGroup}. This means by default:
+     *
+     * * The group and all descendants are marked `pristine`
+     * * The group and all descendants are marked `untouched`
+     * * The value of all descendants will be null or null maps
+     *
+     * You can also reset to a specific form state by passing in a map of states
+     * that matches the structure of your form, with control names as keys. The state
+     * can be a standalone value or a form state object with both a value and a disabled
+     * status.
+     *
+     * ### Example
+     *
+     * ```ts
+     * this.form.reset({first: 'name', last: 'last name'});
+     *
+     * console.log(this.form.value);  // {first: 'name', last: 'last name'}
+     * ```
+     *
+     * - OR -
+     *
+     * ```
+     * this.form.reset({
+     *   first: {value: 'name', disabled: true},
+     *   last: 'last'
+     * });
+     *
+     * console.log(this.form.value);  // {first: 'name', last: 'last name'}
+     * console.log(this.form.get('first').status);  // 'DISABLED'
+     * ```
+     * @param {?=} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormGroup.prototype.reset = function (value, options) {
+        if (value === void 0) { value = {}; }
+        if (options === void 0) { options = {}; }
+        this._forEachChild(function (control, name) {
+            control.reset(value[name], { onlySelf: true, emitEvent: options.emitEvent });
+        });
+        this.updateValueAndValidity(options);
+        this._updatePristine(options);
+        this._updateTouched(options);
+    };
+    /**
+     * The aggregate value of the {\@link FormGroup}, including any disabled controls.
+     *
+     * If you'd like to include all values regardless of disabled status, use this method.
+     * Otherwise, the `value` property is the best way to get the value of the group.
+     * @return {?}
+     */
+    FormGroup.prototype.getRawValue = function () {
+        return this._reduceChildren({}, function (acc, control, name) {
+            acc[name] = control instanceof FormControl ? control.value : ((control)).getRawValue();
+            return acc;
+        });
+    };
+    /**
+     * \@internal
+     * @param {?} name
+     * @return {?}
+     */
+    FormGroup.prototype._throwIfControlMissing = function (name) {
+        if (!Object.keys(this.controls).length) {
+            throw new Error("\n        There are no form controls registered with this group yet.  If you're using ngModel,\n        you may want to check next tick (e.g. use setTimeout).\n      ");
         }
-    }
-    var checkIEAndCrossContext = function (nativeDelegate, delegate, target, args) {
-        if (!isDisableIECheck && ieOrEdge) {
-            if (isEnableCrossContextCheck) {
-                try {
-                    var testString = delegate.toString();
-                    if ((testString === FUNCTION_WRAPPER || testString == BROWSER_TOOLS)) {
-                        nativeDelegate.apply(target, args);
-                        return false;
-                    }
-                }
-                catch (error) {
-                    nativeDelegate.apply(target, args);
-                    return false;
-                }
-            }
-            else {
-                var testString = delegate.toString();
-                if ((testString === FUNCTION_WRAPPER || testString == BROWSER_TOOLS)) {
-                    nativeDelegate.apply(target, args);
-                    return false;
-                }
-            }
+        if (!this.controls[name]) {
+            throw new Error("Cannot find form control with name: " + name + ".");
         }
-        else if (isEnableCrossContextCheck) {
-            try {
-                delegate.toString();
+    };
+    /**
+     * \@internal
+     * @param {?} cb
+     * @return {?}
+     */
+    FormGroup.prototype._forEachChild = function (cb) {
+        var _this = this;
+        Object.keys(this.controls).forEach(function (k) { return cb(_this.controls[k], k); });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormGroup.prototype._setUpControls = function () {
+        var _this = this;
+        this._forEachChild(function (control) {
+            control.setParent(_this);
+            control._registerOnCollectionChange(_this._onCollectionChange);
+        });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormGroup.prototype._updateValue = function () { this._value = this._reduceValue(); };
+    /**
+     * \@internal
+     * @param {?} condition
+     * @return {?}
+     */
+    FormGroup.prototype._anyControls = function (condition) {
+        var _this = this;
+        var /** @type {?} */ res = false;
+        this._forEachChild(function (control, name) {
+            res = res || (_this.contains(name) && condition(control));
+        });
+        return res;
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormGroup.prototype._reduceValue = function () {
+        var _this = this;
+        return this._reduceChildren({}, function (acc, control, name) {
+            if (control.enabled || _this.disabled) {
+                acc[name] = control.value;
             }
-            catch (error) {
-                nativeDelegate.apply(target, args);
+            return acc;
+        });
+    };
+    /**
+     * \@internal
+     * @param {?} initValue
+     * @param {?} fn
+     * @return {?}
+     */
+    FormGroup.prototype._reduceChildren = function (initValue, fn) {
+        var /** @type {?} */ res = initValue;
+        this._forEachChild(function (control, name) { res = fn(res, control, name); });
+        return res;
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormGroup.prototype._allControlsDisabled = function () {
+        for (var _i = 0, _a = Object.keys(this.controls); _i < _a.length; _i++) {
+            var controlName = _a[_i];
+            if (this.controls[controlName].enabled) {
                 return false;
             }
         }
-        return true;
+        return Object.keys(this.controls).length > 0 || this.disabled;
     };
-    var apiTypes = [];
-    for (var i = 0; i < apis.length; i++) {
-        var type = _global[apis[i]];
-        apiTypes.push(type && type.prototype);
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    FormGroup.prototype._checkAllValuesPresent = function (value) {
+        this._forEachChild(function (control, name) {
+            if (value[name] === undefined) {
+                throw new Error("Must supply a value for form control with name: '" + name + "'.");
+            }
+        });
+    };
+    return FormGroup;
+}(AbstractControl));
+/**
+ * \@whatItDoes Tracks the value and validity state of an array of {\@link FormControl},
+ * {\@link FormGroup} or {\@link FormArray} instances.
+ *
+ * A `FormArray` aggregates the values of each child {\@link FormControl} into an array.
+ * It calculates its status by reducing the statuses of its children. For example, if one of
+ * the controls in a `FormArray` is invalid, the entire array becomes invalid.
+ *
+ * `FormArray` is one of the three fundamental building blocks used to define forms in Angular,
+ * along with {\@link FormControl} and {\@link FormGroup}.
+ *
+ * \@howToUse
+ *
+ * When instantiating a {\@link FormArray}, pass in an array of child controls as the first
+ * argument.
+ *
+ * ### Example
+ *
+ * ```
+ * const arr = new FormArray([
+ *   new FormControl('Nancy', Validators.minLength(2)),
+ *   new FormControl('Drew'),
+ * ]);
+ *
+ * console.log(arr.value);   // ['Nancy', 'Drew']
+ * console.log(arr.status);  // 'VALID'
+ * ```
+ *
+ * You can also include array-level validators as the second arg, or array-level async
+ * validators as the third arg. These come in handy when you want to perform validation
+ * that considers the value of more than one child control.
+ *
+ * ### Adding or removing controls
+ *
+ * To change the controls in the array, use the `push`, `insert`, or `removeAt` methods
+ * in `FormArray` itself. These methods ensure the controls are properly tracked in the
+ * form's hierarchy. Do not modify the array of `AbstractControl`s used to instantiate
+ * the `FormArray` directly, as that will result in strange and unexpected behavior such
+ * as broken change detection.
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * \@stable
+ */
+var FormArray = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormArray, _super);
+    /**
+     * @param {?} controls
+     * @param {?=} validator
+     * @param {?=} asyncValidator
+     */
+    function FormArray(controls, validator, asyncValidator) {
+        var _this = _super.call(this, validator || null, asyncValidator || null) || this;
+        _this.controls = controls;
+        _this._initObservables();
+        _this._setUpControls();
+        _this.updateValueAndValidity({ onlySelf: true, emitEvent: false });
+        return _this;
     }
-    patchEventTarget(_global, apiTypes, { validateHandler: checkIEAndCrossContext });
-    api.patchEventTarget = patchEventTarget;
-    return true;
-}
-
+    /**
+     * Get the {\@link AbstractControl} at the given `index` in the array.
+     * @param {?} index
+     * @return {?}
+     */
+    FormArray.prototype.at = function (index) { return this.controls[index]; };
+    /**
+     * Insert a new {\@link AbstractControl} at the end of the array.
+     * @param {?} control
+     * @return {?}
+     */
+    FormArray.prototype.push = function (control) {
+        this.controls.push(control);
+        this._registerControl(control);
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    /**
+     * Insert a new {\@link AbstractControl} at the given `index` in the array.
+     * @param {?} index
+     * @param {?} control
+     * @return {?}
+     */
+    FormArray.prototype.insert = function (index, control) {
+        this.controls.splice(index, 0, control);
+        this._registerControl(control);
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    /**
+     * Remove the control at the given `index` in the array.
+     * @param {?} index
+     * @return {?}
+     */
+    FormArray.prototype.removeAt = function (index) {
+        if (this.controls[index])
+            this.controls[index]._registerOnCollectionChange(function () { });
+        this.controls.splice(index, 1);
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    /**
+     * Replace an existing control.
+     * @param {?} index
+     * @param {?} control
+     * @return {?}
+     */
+    FormArray.prototype.setControl = function (index, control) {
+        if (this.controls[index])
+            this.controls[index]._registerOnCollectionChange(function () { });
+        this.controls.splice(index, 1);
+        if (control) {
+            this.controls.splice(index, 0, control);
+            this._registerControl(control);
+        }
+        this.updateValueAndValidity();
+        this._onCollectionChange();
+    };
+    Object.defineProperty(FormArray.prototype, "length", {
+        /**
+         * Length of the control array.
+         * @return {?}
+         */
+        get: function () { return this.controls.length; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     *  Sets the value of the {\@link FormArray}. It accepts an array that matches
+     *  the structure of the control.
+     *
+     * This method performs strict checks, so it will throw an error if you try
+     * to set the value of a control that doesn't exist or if you exclude the
+     * value of a control.
+     *
+     *  ### Example
+     *
+     *  ```
+     *  const arr = new FormArray([
+     *     new FormControl(),
+     *     new FormControl()
+     *  ]);
+     *  console.log(arr.value);   // [null, null]
+     *
+     *  arr.setValue(['Nancy', 'Drew']);
+     *  console.log(arr.value);   // ['Nancy', 'Drew']
+     *  ```
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormArray.prototype.setValue = function (value, options) {
+        var _this = this;
+        if (options === void 0) { options = {}; }
+        this._checkAllValuesPresent(value);
+        value.forEach(function (newValue, index) {
+            _this._throwIfControlMissing(index);
+            _this.at(index).setValue(newValue, { onlySelf: true, emitEvent: options.emitEvent });
+        });
+        this.updateValueAndValidity(options);
+    };
+    /**
+     *  Patches the value of the {\@link FormArray}. It accepts an array that matches the
+     *  structure of the control, and will do its best to match the values to the correct
+     *  controls in the group.
+     *
+     *  It accepts both super-sets and sub-sets of the array without throwing an error.
+     *
+     *  ### Example
+     *
+     *  ```
+     *  const arr = new FormArray([
+     *     new FormControl(),
+     *     new FormControl()
+     *  ]);
+     *  console.log(arr.value);   // [null, null]
+     *
+     *  arr.patchValue(['Nancy']);
+     *  console.log(arr.value);   // ['Nancy', null]
+     *  ```
+     * @param {?} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormArray.prototype.patchValue = function (value, options) {
+        var _this = this;
+        if (options === void 0) { options = {}; }
+        value.forEach(function (newValue, index) {
+            if (_this.at(index)) {
+                _this.at(index).patchValue(newValue, { onlySelf: true, emitEvent: options.emitEvent });
+            }
+        });
+        this.updateValueAndValidity(options);
+    };
+    /**
+     * Resets the {\@link FormArray}. This means by default:
+     *
+     * * The array and all descendants are marked `pristine`
+     * * The array and all descendants are marked `untouched`
+     * * The value of all descendants will be null or null maps
+     *
+     * You can also reset to a specific form state by passing in an array of states
+     * that matches the structure of the control. The state can be a standalone value
+     * or a form state object with both a value and a disabled status.
+     *
+     * ### Example
+     *
+     * ```ts
+     * this.arr.reset(['name', 'last name']);
+     *
+     * console.log(this.arr.value);  // ['name', 'last name']
+     * ```
+     *
+     * - OR -
+     *
+     * ```
+     * this.arr.reset([
+     *   {value: 'name', disabled: true},
+     *   'last'
+     * ]);
+     *
+     * console.log(this.arr.value);  // ['name', 'last name']
+     * console.log(this.arr.get(0).status);  // 'DISABLED'
+     * ```
+     * @param {?=} value
+     * @param {?=} options
+     * @return {?}
+     */
+    FormArray.prototype.reset = function (value, options) {
+        if (value === void 0) { value = []; }
+        if (options === void 0) { options = {}; }
+        this._forEachChild(function (control, index) {
+            control.reset(value[index], { onlySelf: true, emitEvent: options.emitEvent });
+        });
+        this.updateValueAndValidity(options);
+        this._updatePristine(options);
+        this._updateTouched(options);
+    };
+    /**
+     * The aggregate value of the array, including any disabled controls.
+     *
+     * If you'd like to include all values regardless of disabled status, use this method.
+     * Otherwise, the `value` property is the best way to get the value of the array.
+     * @return {?}
+     */
+    FormArray.prototype.getRawValue = function () {
+        return this.controls.map(function (control) {
+            return control instanceof FormControl ? control.value : ((control)).getRawValue();
+        });
+    };
+    /**
+     * \@internal
+     * @param {?} index
+     * @return {?}
+     */
+    FormArray.prototype._throwIfControlMissing = function (index) {
+        if (!this.controls.length) {
+            throw new Error("\n        There are no form controls registered with this array yet.  If you're using ngModel,\n        you may want to check next tick (e.g. use setTimeout).\n      ");
+        }
+        if (!this.at(index)) {
+            throw new Error("Cannot find form control at index " + index);
+        }
+    };
+    /**
+     * \@internal
+     * @param {?} cb
+     * @return {?}
+     */
+    FormArray.prototype._forEachChild = function (cb) {
+        this.controls.forEach(function (control, index) { cb(control, index); });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormArray.prototype._updateValue = function () {
+        var _this = this;
+        this._value = this.controls.filter(function (control) { return control.enabled || _this.disabled; })
+            .map(function (control) { return control.value; });
+    };
+    /**
+     * \@internal
+     * @param {?} condition
+     * @return {?}
+     */
+    FormArray.prototype._anyControls = function (condition) {
+        return this.controls.some(function (control) { return control.enabled && condition(control); });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormArray.prototype._setUpControls = function () {
+        var _this = this;
+        this._forEachChild(function (control) { return _this._registerControl(control); });
+    };
+    /**
+     * \@internal
+     * @param {?} value
+     * @return {?}
+     */
+    FormArray.prototype._checkAllValuesPresent = function (value) {
+        this._forEachChild(function (control, i) {
+            if (value[i] === undefined) {
+                throw new Error("Must supply a value for form control at index: " + i + ".");
+            }
+        });
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormArray.prototype._allControlsDisabled = function () {
+        for (var _i = 0, _a = this.controls; _i < _a.length; _i++) {
+            var control = _a[_i];
+            if (control.enabled)
+                return false;
+        }
+        return this.controls.length > 0 || this.disabled;
+    };
+    /**
+     * @param {?} control
+     * @return {?}
+     */
+    FormArray.prototype._registerControl = function (control) {
+        control.setParent(this);
+        control._registerOnCollectionChange(this._onCollectionChange);
+    };
+    return FormArray;
+}(AbstractControl));
 /**
  * @license
  * Copyright Google Inc. All Rights Reserved.
@@ -58073,36 +62341,225 @@ function eventTargetPatch(_global, api) {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-function registerElementPatch(_global) {
-    if ((!isBrowser && !isMix) || !('registerElement' in _global.document)) {
-        return;
+var formDirectiveProvider = {
+    provide: ControlContainer,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return NgForm; })
+};
+var resolvedPromise = Promise.resolve(null);
+/**
+ * \@whatItDoes Creates a top-level {\@link FormGroup} instance and binds it to a form
+ * to track aggregate form value and validation status.
+ *
+ * \@howToUse
+ *
+ * As soon as you import the `FormsModule`, this directive becomes active by default on
+ * all `<form>` tags.  You don't need to add a special selector.
+ *
+ * You can export the directive into a local template variable using `ngForm` as the key
+ * (ex: `#myForm="ngForm"`). This is optional, but useful.  Many properties from the underlying
+ * {\@link FormGroup} instance are duplicated on the directive itself, so a reference to it
+ * will give you access to the aggregate value and validity status of the form, as well as
+ * user interaction properties like `dirty` and `touched`.
+ *
+ * To register child controls with the form, you'll want to use {\@link NgModel} with a
+ * `name` attribute.  You can also use {\@link NgModelGroup} if you'd like to create
+ * sub-groups within the form.
+ *
+ * You can listen to the directive's `ngSubmit` event to be notified when the user has
+ * triggered a form submission. The `ngSubmit` event will be emitted with the original form
+ * submission event.
+ *
+ * {\@example forms/ts/simpleForm/simple_form_example.ts region='Component'}
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * * **NgModule**: `FormsModule`
+ *
+ *  \@stable
+ */
+var NgForm = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](NgForm, _super);
+    /**
+     * @param {?} validators
+     * @param {?} asyncValidators
+     */
+    function NgForm(validators, asyncValidators) {
+        var _this = _super.call(this) || this;
+        _this._submitted = false;
+        _this.ngSubmit = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+        _this.form =
+            new FormGroup({}, composeValidators(validators), composeAsyncValidators(asyncValidators));
+        return _this;
     }
-    var _registerElement = document.registerElement;
-    var callbacks = ['createdCallback', 'attachedCallback', 'detachedCallback', 'attributeChangedCallback'];
-    document.registerElement = function (name, opts) {
-        if (opts && opts.prototype) {
-            callbacks.forEach(function (callback) {
-                var source = 'Document.registerElement::' + callback;
-                if (opts.prototype.hasOwnProperty(callback)) {
-                    var descriptor = Object.getOwnPropertyDescriptor(opts.prototype, callback);
-                    if (descriptor && descriptor.value) {
-                        descriptor.value = Zone.current.wrap(descriptor.value, source);
-                        _redefineProperty(opts.prototype, callback, descriptor);
-                    }
-                    else {
-                        opts.prototype[callback] = Zone.current.wrap(opts.prototype[callback], source);
-                    }
-                }
-                else if (opts.prototype[callback]) {
-                    opts.prototype[callback] = Zone.current.wrap(opts.prototype[callback], source);
-                }
-            });
-        }
-        return _registerElement.apply(document, [name, opts]);
+    Object.defineProperty(NgForm.prototype, "submitted", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._submitted; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgForm.prototype, "formDirective", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgForm.prototype, "control", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this.form; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgForm.prototype, "path", {
+        /**
+         * @return {?}
+         */
+        get: function () { return []; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgForm.prototype, "controls", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this.form.controls; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    NgForm.prototype.addControl = function (dir) {
+        var _this = this;
+        resolvedPromise.then(function () {
+            var /** @type {?} */ container = _this._findContainer(dir.path);
+            dir._control = (container.registerControl(dir.name, dir.control));
+            setUpControl(dir.control, dir);
+            dir.control.updateValueAndValidity({ emitEvent: false });
+        });
     };
-    attachOriginToPatched(document.registerElement, _registerElement);
-}
-
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    NgForm.prototype.getControl = function (dir) { return (this.form.get(dir.path)); };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    NgForm.prototype.removeControl = function (dir) {
+        var _this = this;
+        resolvedPromise.then(function () {
+            var /** @type {?} */ container = _this._findContainer(dir.path);
+            if (container) {
+                container.removeControl(dir.name);
+            }
+        });
+    };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    NgForm.prototype.addFormGroup = function (dir) {
+        var _this = this;
+        resolvedPromise.then(function () {
+            var /** @type {?} */ container = _this._findContainer(dir.path);
+            var /** @type {?} */ group = new FormGroup({});
+            setUpFormContainer(group, dir);
+            container.registerControl(dir.name, group);
+            group.updateValueAndValidity({ emitEvent: false });
+        });
+    };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    NgForm.prototype.removeFormGroup = function (dir) {
+        var _this = this;
+        resolvedPromise.then(function () {
+            var /** @type {?} */ container = _this._findContainer(dir.path);
+            if (container) {
+                container.removeControl(dir.name);
+            }
+        });
+    };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    NgForm.prototype.getFormGroup = function (dir) { return (this.form.get(dir.path)); };
+    /**
+     * @param {?} dir
+     * @param {?} value
+     * @return {?}
+     */
+    NgForm.prototype.updateModel = function (dir, value) {
+        var _this = this;
+        resolvedPromise.then(function () {
+            var /** @type {?} */ ctrl = (_this.form.get(/** @type {?} */ ((dir.path))));
+            ctrl.setValue(value);
+        });
+    };
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    NgForm.prototype.setValue = function (value) { this.control.setValue(value); };
+    /**
+     * @param {?} $event
+     * @return {?}
+     */
+    NgForm.prototype.onSubmit = function ($event) {
+        this._submitted = true;
+        this.ngSubmit.emit($event);
+        return false;
+    };
+    /**
+     * @return {?}
+     */
+    NgForm.prototype.onReset = function () { this.resetForm(); };
+    /**
+     * @param {?=} value
+     * @return {?}
+     */
+    NgForm.prototype.resetForm = function (value) {
+        if (value === void 0) { value = undefined; }
+        this.form.reset(value);
+        this._submitted = false;
+    };
+    /**
+     * \@internal
+     * @param {?} path
+     * @return {?}
+     */
+    NgForm.prototype._findContainer = function (path) {
+        path.pop();
+        return path.length ? (this.form.get(path)) : this.form;
+    };
+    return NgForm;
+}(ControlContainer));
+NgForm.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'form:not([ngNoForm]):not([formGroup]),ngForm,[ngForm]',
+                providers: [formDirectiveProvider],
+                host: { '(submit)': 'onSubmit($event)', '(reset)': 'onReset()' },
+                outputs: ['ngSubmit'],
+                exportAs: 'ngForm'
+            },] },
+];
+/**
+ * @nocollapse
+ */
+NgForm.ctorParameters = function () { return [
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+]; };
 /**
  * @license
  * Copyright Google Inc. All Rights Reserved.
@@ -58110,179 +62567,2375 @@ function registerElementPatch(_global) {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-Zone.__load_patch('timers', function (global, Zone, api) {
-    var set = 'set';
-    var clear = 'clear';
-    patchTimer(global, set, clear, 'Timeout');
-    patchTimer(global, set, clear, 'Interval');
-    patchTimer(global, set, clear, 'Immediate');
-    patchTimer(global, 'request', 'cancel', 'AnimationFrame');
-    patchTimer(global, 'mozRequest', 'mozCancel', 'AnimationFrame');
-    patchTimer(global, 'webkitRequest', 'webkitCancel', 'AnimationFrame');
-});
-Zone.__load_patch('blocking', function (global, Zone, api) {
-    var blockingMethods = ['alert', 'prompt', 'confirm'];
-    for (var i = 0; i < blockingMethods.length; i++) {
-        var name_1 = blockingMethods[i];
-        patchMethod(global, name_1, function (delegate, symbol, name) {
-            return function (s, args) {
-                return Zone.current.run(delegate, global, args, name);
-            };
-        });
+var FormErrorExamples = {
+    formControlName: "\n    <div [formGroup]=\"myGroup\">\n      <input formControlName=\"firstName\">\n    </div>\n\n    In your class:\n\n    this.myGroup = new FormGroup({\n       firstName: new FormControl()\n    });",
+    formGroupName: "\n    <div [formGroup]=\"myGroup\">\n       <div formGroupName=\"person\">\n          <input formControlName=\"firstName\">\n       </div>\n    </div>\n\n    In your class:\n\n    this.myGroup = new FormGroup({\n       person: new FormGroup({ firstName: new FormControl() })\n    });",
+    formArrayName: "\n    <div [formGroup]=\"myGroup\">\n      <div formArrayName=\"cities\">\n        <div *ngFor=\"let city of cityArray.controls; index as i\">\n          <input [formControlName]=\"i\">\n        </div>\n      </div>\n    </div>\n\n    In your class:\n\n    this.cityArray = new FormArray([new FormControl('SF')]);\n    this.myGroup = new FormGroup({\n      cities: this.cityArray\n    });",
+    ngModelGroup: "\n    <form>\n       <div ngModelGroup=\"person\">\n          <input [(ngModel)]=\"person.name\" name=\"firstName\">\n       </div>\n    </form>",
+    ngModelWithFormGroup: "\n    <div [formGroup]=\"myGroup\">\n       <input formControlName=\"firstName\">\n       <input [(ngModel)]=\"showMoreControls\" [ngModelOptions]=\"{standalone: true}\">\n    </div>\n  "
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var TemplateDrivenErrors = (function () {
+    function TemplateDrivenErrors() {
     }
-});
-Zone.__load_patch('EventTarget', function (global, Zone, api) {
-    eventTargetPatch(global, api);
-    // patch XMLHttpRequestEventTarget's addEventListener/removeEventListener
-    var XMLHttpRequestEventTarget = global['XMLHttpRequestEventTarget'];
-    if (XMLHttpRequestEventTarget && XMLHttpRequestEventTarget.prototype) {
-        api.patchEventTarget(global, [XMLHttpRequestEventTarget.prototype]);
+    /**
+     * @return {?}
+     */
+    TemplateDrivenErrors.modelParentException = function () {
+        throw new Error("\n      ngModel cannot be used to register form controls with a parent formGroup directive.  Try using\n      formGroup's partner directive \"formControlName\" instead.  Example:\n\n      " + FormErrorExamples.formControlName + "\n\n      Or, if you'd like to avoid registering this form control, indicate that it's standalone in ngModelOptions:\n\n      Example:\n\n      " + FormErrorExamples.ngModelWithFormGroup);
+    };
+    /**
+     * @return {?}
+     */
+    TemplateDrivenErrors.formGroupNameException = function () {
+        throw new Error("\n      ngModel cannot be used to register form controls with a parent formGroupName or formArrayName directive.\n\n      Option 1: Use formControlName instead of ngModel (reactive strategy):\n\n      " + FormErrorExamples.formGroupName + "\n\n      Option 2:  Update ngModel's parent be ngModelGroup (template-driven strategy):\n\n      " + FormErrorExamples.ngModelGroup);
+    };
+    /**
+     * @return {?}
+     */
+    TemplateDrivenErrors.missingNameException = function () {
+        throw new Error("If ngModel is used within a form tag, either the name attribute must be set or the form\n      control must be defined as 'standalone' in ngModelOptions.\n\n      Example 1: <input [(ngModel)]=\"person.firstName\" name=\"first\">\n      Example 2: <input [(ngModel)]=\"person.firstName\" [ngModelOptions]=\"{standalone: true}\">");
+    };
+    /**
+     * @return {?}
+     */
+    TemplateDrivenErrors.modelGroupParentException = function () {
+        throw new Error("\n      ngModelGroup cannot be used with a parent formGroup directive.\n\n      Option 1: Use formGroupName instead of ngModelGroup (reactive strategy):\n\n      " + FormErrorExamples.formGroupName + "\n\n      Option 2:  Use a regular form tag instead of the formGroup directive (template-driven strategy):\n\n      " + FormErrorExamples.ngModelGroup);
+    };
+    return TemplateDrivenErrors;
+}());
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var modelGroupProvider = {
+    provide: ControlContainer,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return NgModelGroup; })
+};
+/**
+ * \@whatItDoes Creates and binds a {\@link FormGroup} instance to a DOM element.
+ *
+ * \@howToUse
+ *
+ * This directive can only be used as a child of {\@link NgForm} (or in other words,
+ * within `<form>` tags).
+ *
+ * Use this directive if you'd like to create a sub-group within a form. This can
+ * come in handy if you want to validate a sub-group of your form separately from
+ * the rest of your form, or if some values in your domain model make more sense to
+ * consume together in a nested object.
+ *
+ * Pass in the name you'd like this sub-group to have and it will become the key
+ * for the sub-group in the form's full value. You can also export the directive into
+ * a local template variable using `ngModelGroup` (ex: `#myGroup="ngModelGroup"`).
+ *
+ * {\@example forms/ts/ngModelGroup/ng_model_group_example.ts region='Component'}
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * * **NgModule**: `FormsModule`
+ *
+ * \@stable
+ */
+var NgModelGroup = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](NgModelGroup, _super);
+    /**
+     * @param {?} parent
+     * @param {?} validators
+     * @param {?} asyncValidators
+     */
+    function NgModelGroup(parent, validators, asyncValidators) {
+        var _this = _super.call(this) || this;
+        _this._parent = parent;
+        _this._validators = validators;
+        _this._asyncValidators = asyncValidators;
+        return _this;
     }
-    patchClass('MutationObserver');
-    patchClass('WebKitMutationObserver');
-    patchClass('FileReader');
-});
-Zone.__load_patch('on_property', function (global, Zone, api) {
-    propertyDescriptorPatch(api, global);
-    propertyPatch();
-    registerElementPatch(global);
-});
-Zone.__load_patch('canvas', function (global, Zone, api) {
-    var HTMLCanvasElement = global['HTMLCanvasElement'];
-    if (typeof HTMLCanvasElement !== 'undefined' && HTMLCanvasElement.prototype &&
-        HTMLCanvasElement.prototype.toBlob) {
-        patchMacroTask(HTMLCanvasElement.prototype, 'toBlob', function (self, args) {
-            return { name: 'HTMLCanvasElement.toBlob', target: self, callbackIndex: 0, args: args };
-        });
-    }
-});
-Zone.__load_patch('XHR', function (global, Zone, api) {
-    // Treat XMLHTTPRequest as a macrotask.
-    patchXHR(global);
-    var XHR_TASK = zoneSymbol('xhrTask');
-    var XHR_SYNC = zoneSymbol('xhrSync');
-    var XHR_LISTENER = zoneSymbol('xhrListener');
-    var XHR_SCHEDULED = zoneSymbol('xhrScheduled');
-    function patchXHR(window) {
-        function findPendingTask(target) {
-            var pendingTask = target[XHR_TASK];
-            return pendingTask;
+    /**
+     * \@internal
+     * @return {?}
+     */
+    NgModelGroup.prototype._checkParentType = function () {
+        if (!(this._parent instanceof NgModelGroup) && !(this._parent instanceof NgForm)) {
+            TemplateDrivenErrors.modelGroupParentException();
         }
-        function scheduleTask(task) {
-            XMLHttpRequest[XHR_SCHEDULED] = false;
-            var data = task.data;
-            // remove existing event listener
-            var listener = data.target[XHR_LISTENER];
-            var oriAddListener = data.target[zoneSymbol('addEventListener')];
-            var oriRemoveListener = data.target[zoneSymbol('removeEventListener')];
-            if (listener) {
-                oriRemoveListener.apply(data.target, ['readystatechange', listener]);
+    };
+    return NgModelGroup;
+}(AbstractFormGroupDirective));
+NgModelGroup.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: '[ngModelGroup]', providers: [modelGroupProvider], exportAs: 'ngModelGroup' },] },
+];
+/**
+ * @nocollapse
+ */
+NgModelGroup.ctorParameters = function () { return [
+    { type: ControlContainer, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["SkipSelf"] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+]; };
+NgModelGroup.propDecorators = {
+    'name': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngModelGroup',] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var formControlBinding = {
+    provide: NgControl,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return NgModel; })
+};
+/**
+ * `ngModel` forces an additional change detection run when its inputs change:
+ * E.g.:
+ * ```
+ * <div>{{myModel.valid}}</div>
+ * <input [(ngModel)]="myValue" #myModel="ngModel">
+ * ```
+ * I.e. `ngModel` can export itself on the element and then be used in the template.
+ * Normally, this would result in expressions before the `input` that use the exported directive
+ * to have and old value as they have been
+ * dirty checked before. As this is a very common case for `ngModel`, we added this second change
+ * detection run.
+ *
+ * Notes:
+ * - this is just one extra run no matter how many `ngModel` have been changed.
+ * - this is a general problem when using `exportAs` for directives!
+ */
+var resolvedPromise$1 = Promise.resolve(null);
+/**
+ * \@whatItDoes Creates a {\@link FormControl} instance from a domain model and binds it
+ * to a form control element.
+ *
+ * The {\@link FormControl} instance will track the value, user interaction, and
+ * validation status of the control and keep the view synced with the model. If used
+ * within a parent form, the directive will also register itself with the form as a child
+ * control.
+ *
+ * \@howToUse
+ *
+ * This directive can be used by itself or as part of a larger form. All you need is the
+ * `ngModel` selector to activate it.
+ *
+ * It accepts a domain model as an optional {\@link Input}. If you have a one-way binding
+ * to `ngModel` with `[]` syntax, changing the value of the domain model in the component
+ * class will set the value in the view. If you have a two-way binding with `[()]` syntax
+ * (also known as 'banana-box syntax'), the value in the UI will always be synced back to
+ * the domain model in your class as well.
+ *
+ * If you wish to inspect the properties of the associated {\@link FormControl} (like
+ * validity state), you can also export the directive into a local template variable using
+ * `ngModel` as the key (ex: `#myVar="ngModel"`). You can then access the control using the
+ * directive's `control` property, but most properties you'll need (like `valid` and `dirty`)
+ * will fall through to the control anyway, so you can access them directly. You can see a
+ * full list of properties directly available in {\@link AbstractControlDirective}.
+ *
+ * The following is an example of a simple standalone control using `ngModel`:
+ *
+ * {\@example forms/ts/simpleNgModel/simple_ng_model_example.ts region='Component'}
+ *
+ * When using the `ngModel` within `<form>` tags, you'll also need to supply a `name` attribute
+ * so that the control can be registered with the parent form under that name.
+ *
+ * It's worth noting that in the context of a parent form, you often can skip one-way or
+ * two-way binding because the parent form will sync the value for you. You can access
+ * its properties by exporting it into a local template variable using `ngForm` (ex:
+ * `#f="ngForm"`). Then you can pass it where it needs to go on submit.
+ *
+ * If you do need to populate initial values into your form, using a one-way binding for
+ * `ngModel` tends to be sufficient as long as you use the exported form's value rather
+ * than the domain model's value on submit.
+ *
+ * Take a look at an example of using `ngModel` within a form:
+ *
+ * {\@example forms/ts/simpleForm/simple_form_example.ts region='Component'}
+ *
+ * To see `ngModel` examples with different form control types, see:
+ *
+ * * Radio buttons: {\@link RadioControlValueAccessor}
+ * * Selects: {\@link SelectControlValueAccessor}
+ *
+ * **npm package**: `\@angular/forms`
+ *
+ * **NgModule**: `FormsModule`
+ *
+ *  \@stable
+ */
+var NgModel = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](NgModel, _super);
+    /**
+     * @param {?} parent
+     * @param {?} validators
+     * @param {?} asyncValidators
+     * @param {?} valueAccessors
+     */
+    function NgModel(parent, validators, asyncValidators, valueAccessors) {
+        var _this = _super.call(this) || this;
+        /**
+         * \@internal
+         */
+        _this._control = new FormControl();
+        /**
+         * \@internal
+         */
+        _this._registered = false;
+        _this.update = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+        _this._parent = parent;
+        _this._rawValidators = validators || [];
+        _this._rawAsyncValidators = asyncValidators || [];
+        _this.valueAccessor = selectValueAccessor(_this, valueAccessors);
+        return _this;
+    }
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    NgModel.prototype.ngOnChanges = function (changes) {
+        this._checkForErrors();
+        if (!this._registered)
+            this._setUpControl();
+        if ('isDisabled' in changes) {
+            this._updateDisabled(changes);
+        }
+        if (isPropertyUpdated(changes, this.viewModel)) {
+            this._updateValue(this.model);
+            this.viewModel = this.model;
+        }
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype.ngOnDestroy = function () { this.formDirective && this.formDirective.removeControl(this); };
+    Object.defineProperty(NgModel.prototype, "control", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._control; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgModel.prototype, "path", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return this._parent ? controlPath(this.name, this._parent) : [this.name];
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgModel.prototype, "formDirective", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._parent ? this._parent.formDirective : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgModel.prototype, "validator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return composeValidators(this._rawValidators); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NgModel.prototype, "asyncValidator", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return composeAsyncValidators(this._rawAsyncValidators);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} newValue
+     * @return {?}
+     */
+    NgModel.prototype.viewToModelUpdate = function (newValue) {
+        this.viewModel = newValue;
+        this.update.emit(newValue);
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype._setUpControl = function () {
+        this._isStandalone() ? this._setUpStandalone() :
+            this.formDirective.addControl(this);
+        this._registered = true;
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype._isStandalone = function () {
+        return !this._parent || !!(this.options && this.options.standalone);
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype._setUpStandalone = function () {
+        setUpControl(this._control, this);
+        this._control.updateValueAndValidity({ emitEvent: false });
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype._checkForErrors = function () {
+        if (!this._isStandalone()) {
+            this._checkParentType();
+        }
+        this._checkName();
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype._checkParentType = function () {
+        if (!(this._parent instanceof NgModelGroup) &&
+            this._parent instanceof AbstractFormGroupDirective) {
+            TemplateDrivenErrors.formGroupNameException();
+        }
+        else if (!(this._parent instanceof NgModelGroup) && !(this._parent instanceof NgForm)) {
+            TemplateDrivenErrors.modelParentException();
+        }
+    };
+    /**
+     * @return {?}
+     */
+    NgModel.prototype._checkName = function () {
+        if (this.options && this.options.name)
+            this.name = this.options.name;
+        if (!this._isStandalone() && !this.name) {
+            TemplateDrivenErrors.missingNameException();
+        }
+    };
+    /**
+     * @param {?} value
+     * @return {?}
+     */
+    NgModel.prototype._updateValue = function (value) {
+        var _this = this;
+        resolvedPromise$1.then(function () { _this.control.setValue(value, { emitViewToModelChange: false }); });
+    };
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    NgModel.prototype._updateDisabled = function (changes) {
+        var _this = this;
+        var /** @type {?} */ disabledValue = changes['isDisabled'].currentValue;
+        var /** @type {?} */ isDisabled = disabledValue === '' || (disabledValue && disabledValue !== 'false');
+        resolvedPromise$1.then(function () {
+            if (isDisabled && !_this.control.disabled) {
+                _this.control.disable();
             }
-            var newListener = data.target[XHR_LISTENER] = function () {
-                if (data.target.readyState === data.target.DONE) {
-                    // sometimes on some browsers XMLHttpRequest will fire onreadystatechange with
-                    // readyState=4 multiple times, so we need to check task state here
-                    if (!data.aborted && XMLHttpRequest[XHR_SCHEDULED] &&
-                        task.state === 'scheduled') {
-                        task.invoke();
-                    }
+            else if (!isDisabled && _this.control.disabled) {
+                _this.control.enable();
+            }
+        });
+    };
+    return NgModel;
+}(NgControl));
+NgModel.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[ngModel]:not([formControlName]):not([formControl])',
+                providers: [formControlBinding],
+                exportAs: 'ngModel'
+            },] },
+];
+/**
+ * @nocollapse
+ */
+NgModel.ctorParameters = function () { return [
+    { type: ControlContainer, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALUE_ACCESSOR,] },] },
+]; };
+NgModel.propDecorators = {
+    'name': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+    'isDisabled': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['disabled',] },],
+    'model': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngModel',] },],
+    'options': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngModelOptions',] },],
+    'update': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Output"], args: ['ngModelChange',] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var ReactiveErrors = (function () {
+    function ReactiveErrors() {
+    }
+    /**
+     * @return {?}
+     */
+    ReactiveErrors.controlParentException = function () {
+        throw new Error("formControlName must be used with a parent formGroup directive.  You'll want to add a formGroup\n       directive and pass it an existing FormGroup instance (you can create one in your class).\n\n      Example:\n\n      " + FormErrorExamples.formControlName);
+    };
+    /**
+     * @return {?}
+     */
+    ReactiveErrors.ngModelGroupException = function () {
+        throw new Error("formControlName cannot be used with an ngModelGroup parent. It is only compatible with parents\n       that also have a \"form\" prefix: formGroupName, formArrayName, or formGroup.\n\n       Option 1:  Update the parent to be formGroupName (reactive form strategy)\n\n        " + FormErrorExamples.formGroupName + "\n\n        Option 2: Use ngModel instead of formControlName (template-driven strategy)\n\n        " + FormErrorExamples.ngModelGroup);
+    };
+    /**
+     * @return {?}
+     */
+    ReactiveErrors.missingFormException = function () {
+        throw new Error("formGroup expects a FormGroup instance. Please pass one in.\n\n       Example:\n\n       " + FormErrorExamples.formControlName);
+    };
+    /**
+     * @return {?}
+     */
+    ReactiveErrors.groupParentException = function () {
+        throw new Error("formGroupName must be used with a parent formGroup directive.  You'll want to add a formGroup\n      directive and pass it an existing FormGroup instance (you can create one in your class).\n\n      Example:\n\n      " + FormErrorExamples.formGroupName);
+    };
+    /**
+     * @return {?}
+     */
+    ReactiveErrors.arrayParentException = function () {
+        throw new Error("formArrayName must be used with a parent formGroup directive.  You'll want to add a formGroup\n       directive and pass it an existing FormGroup instance (you can create one in your class).\n\n        Example:\n\n        " + FormErrorExamples.formArrayName);
+    };
+    /**
+     * @return {?}
+     */
+    ReactiveErrors.disabledAttrWarning = function () {
+        console.warn("\n      It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true\n      when you set up this control in your component class, the disabled attribute will actually be set in the DOM for\n      you. We recommend using this approach to avoid 'changed after checked' errors.\n       \n      Example: \n      form = new FormGroup({\n        first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),\n        last: new FormControl('Drew', Validators.required)\n      });\n    ");
+    };
+    return ReactiveErrors;
+}());
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var formControlBinding$1 = {
+    provide: NgControl,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return FormControlDirective; })
+};
+/**
+ * \@whatItDoes Syncs a standalone {\@link FormControl} instance to a form control element.
+ *
+ * In other words, this directive ensures that any values written to the {\@link FormControl}
+ * instance programmatically will be written to the DOM element (model -> view). Conversely,
+ * any values written to the DOM element through user input will be reflected in the
+ * {\@link FormControl} instance (view -> model).
+ *
+ * \@howToUse
+ *
+ * Use this directive if you'd like to create and manage a {\@link FormControl} instance directly.
+ * Simply create a {\@link FormControl}, save it to your component class, and pass it into the
+ * {\@link FormControlDirective}.
+ *
+ * This directive is designed to be used as a standalone control.  Unlike {\@link FormControlName},
+ * it does not require that your {\@link FormControl} instance be part of any parent
+ * {\@link FormGroup}, and it won't be registered to any {\@link FormGroupDirective} that
+ * exists above it.
+ *
+ * **Get the value**: the `value` property is always synced and available on the
+ * {\@link FormControl} instance. See a full list of available properties in
+ * {\@link AbstractControl}.
+ *
+ * **Set the value**: You can pass in an initial value when instantiating the {\@link FormControl},
+ * or you can set it programmatically later using {\@link AbstractControl#setValue} or
+ * {\@link AbstractControl#patchValue}.
+ *
+ * **Listen to value**: If you want to listen to changes in the value of the control, you can
+ * subscribe to the {\@link AbstractControl#valueChanges} event.  You can also listen to
+ * {\@link AbstractControl#statusChanges} to be notified when the validation status is
+ * re-calculated.
+ *
+ * ### Example
+ *
+ * {\@example forms/ts/simpleFormControl/simple_form_control_example.ts region='Component'}
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * * **NgModule**: `ReactiveFormsModule`
+ *
+ *  \@stable
+ */
+var FormControlDirective = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormControlDirective, _super);
+    /**
+     * @param {?} validators
+     * @param {?} asyncValidators
+     * @param {?} valueAccessors
+     */
+    function FormControlDirective(validators, asyncValidators, valueAccessors) {
+        var _this = _super.call(this) || this;
+        _this.update = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+        _this._rawValidators = validators || [];
+        _this._rawAsyncValidators = asyncValidators || [];
+        _this.valueAccessor = selectValueAccessor(_this, valueAccessors);
+        return _this;
+    }
+    Object.defineProperty(FormControlDirective.prototype, "isDisabled", {
+        /**
+         * @param {?} isDisabled
+         * @return {?}
+         */
+        set: function (isDisabled) { ReactiveErrors.disabledAttrWarning(); },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    FormControlDirective.prototype.ngOnChanges = function (changes) {
+        if (this._isControlChanged(changes)) {
+            setUpControl(this.form, this);
+            if (this.control.disabled && ((this.valueAccessor)).setDisabledState) {
+                ((((this.valueAccessor)).setDisabledState))(true);
+            }
+            this.form.updateValueAndValidity({ emitEvent: false });
+        }
+        if (isPropertyUpdated(changes, this.viewModel)) {
+            this.form.setValue(this.model);
+            this.viewModel = this.model;
+        }
+    };
+    Object.defineProperty(FormControlDirective.prototype, "path", {
+        /**
+         * @return {?}
+         */
+        get: function () { return []; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlDirective.prototype, "validator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return composeValidators(this._rawValidators); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlDirective.prototype, "asyncValidator", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return composeAsyncValidators(this._rawAsyncValidators);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlDirective.prototype, "control", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this.form; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} newValue
+     * @return {?}
+     */
+    FormControlDirective.prototype.viewToModelUpdate = function (newValue) {
+        this.viewModel = newValue;
+        this.update.emit(newValue);
+    };
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    FormControlDirective.prototype._isControlChanged = function (changes) {
+        return changes.hasOwnProperty('form');
+    };
+    return FormControlDirective;
+}(NgControl));
+FormControlDirective.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: '[formControl]', providers: [formControlBinding$1], exportAs: 'ngForm' },] },
+];
+/**
+ * @nocollapse
+ */
+FormControlDirective.ctorParameters = function () { return [
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALUE_ACCESSOR,] },] },
+]; };
+FormControlDirective.propDecorators = {
+    'form': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['formControl',] },],
+    'model': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngModel',] },],
+    'update': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Output"], args: ['ngModelChange',] },],
+    'isDisabled': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['disabled',] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var formDirectiveProvider$1 = {
+    provide: ControlContainer,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return FormGroupDirective; })
+};
+/**
+ * \@whatItDoes Binds an existing {\@link FormGroup} to a DOM element.
+ *
+ * \@howToUse
+ *
+ * This directive accepts an existing {\@link FormGroup} instance. It will then use this
+ * {\@link FormGroup} instance to match any child {\@link FormControl}, {\@link FormGroup},
+ * and {\@link FormArray} instances to child {\@link FormControlName}, {\@link FormGroupName},
+ * and {\@link FormArrayName} directives.
+ *
+ * **Set value**: You can set the form's initial value when instantiating the
+ * {\@link FormGroup}, or you can set it programmatically later using the {\@link FormGroup}'s
+ * {\@link AbstractControl#setValue} or {\@link AbstractControl#patchValue} methods.
+ *
+ * **Listen to value**: If you want to listen to changes in the value of the form, you can subscribe
+ * to the {\@link FormGroup}'s {\@link AbstractControl#valueChanges} event.  You can also listen to
+ * its {\@link AbstractControl#statusChanges} event to be notified when the validation status is
+ * re-calculated.
+ *
+ * Furthermore, you can listen to the directive's `ngSubmit` event to be notified when the user has
+ * triggered a form submission. The `ngSubmit` event will be emitted with the original form
+ * submission event.
+ *
+ * ### Example
+ *
+ * In this example, we create form controls for first name and last name.
+ *
+ * {\@example forms/ts/simpleFormGroup/simple_form_group_example.ts region='Component'}
+ *
+ * **npm package**: `\@angular/forms`
+ *
+ * **NgModule**: {\@link ReactiveFormsModule}
+ *
+ *  \@stable
+ */
+var FormGroupDirective = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormGroupDirective, _super);
+    /**
+     * @param {?} _validators
+     * @param {?} _asyncValidators
+     */
+    function FormGroupDirective(_validators, _asyncValidators) {
+        var _this = _super.call(this) || this;
+        _this._validators = _validators;
+        _this._asyncValidators = _asyncValidators;
+        _this._submitted = false;
+        _this.directives = [];
+        _this.form = ((null));
+        _this.ngSubmit = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+        return _this;
+    }
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    FormGroupDirective.prototype.ngOnChanges = function (changes) {
+        this._checkFormPresent();
+        if (changes.hasOwnProperty('form')) {
+            this._updateValidators();
+            this._updateDomValue();
+            this._updateRegistrations();
+        }
+    };
+    Object.defineProperty(FormGroupDirective.prototype, "submitted", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._submitted; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormGroupDirective.prototype, "formDirective", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormGroupDirective.prototype, "control", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this.form; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormGroupDirective.prototype, "path", {
+        /**
+         * @return {?}
+         */
+        get: function () { return []; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.addControl = function (dir) {
+        var /** @type {?} */ ctrl = this.form.get(dir.path);
+        setUpControl(ctrl, dir);
+        ctrl.updateValueAndValidity({ emitEvent: false });
+        this.directives.push(dir);
+        return ctrl;
+    };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.getControl = function (dir) { return (this.form.get(dir.path)); };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.removeControl = function (dir) { remove(this.directives, dir); };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.addFormGroup = function (dir) {
+        var /** @type {?} */ ctrl = this.form.get(dir.path);
+        setUpFormContainer(ctrl, dir);
+        ctrl.updateValueAndValidity({ emitEvent: false });
+    };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.removeFormGroup = function (dir) { };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.getFormGroup = function (dir) { return (this.form.get(dir.path)); };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.addFormArray = function (dir) {
+        var /** @type {?} */ ctrl = this.form.get(dir.path);
+        setUpFormContainer(ctrl, dir);
+        ctrl.updateValueAndValidity({ emitEvent: false });
+    };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.removeFormArray = function (dir) { };
+    /**
+     * @param {?} dir
+     * @return {?}
+     */
+    FormGroupDirective.prototype.getFormArray = function (dir) { return (this.form.get(dir.path)); };
+    /**
+     * @param {?} dir
+     * @param {?} value
+     * @return {?}
+     */
+    FormGroupDirective.prototype.updateModel = function (dir, value) {
+        var /** @type {?} */ ctrl = (this.form.get(dir.path));
+        ctrl.setValue(value);
+    };
+    /**
+     * @param {?} $event
+     * @return {?}
+     */
+    FormGroupDirective.prototype.onSubmit = function ($event) {
+        this._submitted = true;
+        this.ngSubmit.emit($event);
+        return false;
+    };
+    /**
+     * @return {?}
+     */
+    FormGroupDirective.prototype.onReset = function () { this.resetForm(); };
+    /**
+     * @param {?=} value
+     * @return {?}
+     */
+    FormGroupDirective.prototype.resetForm = function (value) {
+        if (value === void 0) { value = undefined; }
+        this.form.reset(value);
+        this._submitted = false;
+    };
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormGroupDirective.prototype._updateDomValue = function () {
+        var _this = this;
+        this.directives.forEach(function (dir) {
+            var /** @type {?} */ newCtrl = _this.form.get(dir.path);
+            if (dir._control !== newCtrl) {
+                cleanUpControl(dir._control, dir);
+                if (newCtrl)
+                    setUpControl(newCtrl, dir);
+                dir._control = newCtrl;
+            }
+        });
+        this.form._updateTreeValidity({ emitEvent: false });
+    };
+    /**
+     * @return {?}
+     */
+    FormGroupDirective.prototype._updateRegistrations = function () {
+        var _this = this;
+        this.form._registerOnCollectionChange(function () { return _this._updateDomValue(); });
+        if (this._oldForm)
+            this._oldForm._registerOnCollectionChange(function () { });
+        this._oldForm = this.form;
+    };
+    /**
+     * @return {?}
+     */
+    FormGroupDirective.prototype._updateValidators = function () {
+        var /** @type {?} */ sync = composeValidators(this._validators);
+        this.form.validator = Validators.compose([/** @type {?} */ ((this.form.validator)), /** @type {?} */ ((sync))]);
+        var /** @type {?} */ async = composeAsyncValidators(this._asyncValidators);
+        this.form.asyncValidator = Validators.composeAsync([/** @type {?} */ ((this.form.asyncValidator)), /** @type {?} */ ((async))]);
+    };
+    /**
+     * @return {?}
+     */
+    FormGroupDirective.prototype._checkFormPresent = function () {
+        if (!this.form) {
+            ReactiveErrors.missingFormException();
+        }
+    };
+    return FormGroupDirective;
+}(ControlContainer));
+FormGroupDirective.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[formGroup]',
+                providers: [formDirectiveProvider$1],
+                host: { '(submit)': 'onSubmit($event)', '(reset)': 'onReset()' },
+                exportAs: 'ngForm'
+            },] },
+];
+/**
+ * @nocollapse
+ */
+FormGroupDirective.ctorParameters = function () { return [
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+]; };
+FormGroupDirective.propDecorators = {
+    'form': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['formGroup',] },],
+    'ngSubmit': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Output"] },],
+};
+/**
+ * @template T
+ * @param {?} list
+ * @param {?} el
+ * @return {?}
+ */
+function remove(list, el) {
+    var /** @type {?} */ index = list.indexOf(el);
+    if (index > -1) {
+        list.splice(index, 1);
+    }
+}
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var formGroupNameProvider = {
+    provide: ControlContainer,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return FormGroupName; })
+};
+/**
+ * \@whatItDoes Syncs a nested {\@link FormGroup} to a DOM element.
+ *
+ * \@howToUse
+ *
+ * This directive can only be used with a parent {\@link FormGroupDirective} (selector:
+ * `[formGroup]`).
+ *
+ * It accepts the string name of the nested {\@link FormGroup} you want to link, and
+ * will look for a {\@link FormGroup} registered with that name in the parent
+ * {\@link FormGroup} instance you passed into {\@link FormGroupDirective}.
+ *
+ * Nested form groups can come in handy when you want to validate a sub-group of a
+ * form separately from the rest or when you'd like to group the values of certain
+ * controls into their own nested object.
+ *
+ * **Access the group**: You can access the associated {\@link FormGroup} using the
+ * {\@link AbstractControl#get} method. Ex: `this.form.get('name')`.
+ *
+ * You can also access individual controls within the group using dot syntax.
+ * Ex: `this.form.get('name.first')`
+ *
+ * **Get the value**: the `value` property is always synced and available on the
+ * {\@link FormGroup}. See a full list of available properties in {\@link AbstractControl}.
+ *
+ * **Set the value**: You can set an initial value for each child control when instantiating
+ * the {\@link FormGroup}, or you can set it programmatically later using
+ * {\@link AbstractControl#setValue} or {\@link AbstractControl#patchValue}.
+ *
+ * **Listen to value**: If you want to listen to changes in the value of the group, you can
+ * subscribe to the {\@link AbstractControl#valueChanges} event.  You can also listen to
+ * {\@link AbstractControl#statusChanges} to be notified when the validation status is
+ * re-calculated.
+ *
+ * ### Example
+ *
+ * {\@example forms/ts/nestedFormGroup/nested_form_group_example.ts region='Component'}
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * * **NgModule**: `ReactiveFormsModule`
+ *
+ * \@stable
+ */
+var FormGroupName = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormGroupName, _super);
+    /**
+     * @param {?} parent
+     * @param {?} validators
+     * @param {?} asyncValidators
+     */
+    function FormGroupName(parent, validators, asyncValidators) {
+        var _this = _super.call(this) || this;
+        _this._parent = parent;
+        _this._validators = validators;
+        _this._asyncValidators = asyncValidators;
+        return _this;
+    }
+    /**
+     * \@internal
+     * @return {?}
+     */
+    FormGroupName.prototype._checkParentType = function () {
+        if (_hasInvalidParent(this._parent)) {
+            ReactiveErrors.groupParentException();
+        }
+    };
+    return FormGroupName;
+}(AbstractFormGroupDirective));
+FormGroupName.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: '[formGroupName]', providers: [formGroupNameProvider] },] },
+];
+/**
+ * @nocollapse
+ */
+FormGroupName.ctorParameters = function () { return [
+    { type: ControlContainer, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["SkipSelf"] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+]; };
+FormGroupName.propDecorators = {
+    'name': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['formGroupName',] },],
+};
+var formArrayNameProvider = {
+    provide: ControlContainer,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return FormArrayName; })
+};
+/**
+ * \@whatItDoes Syncs a nested {\@link FormArray} to a DOM element.
+ *
+ * \@howToUse
+ *
+ * This directive is designed to be used with a parent {\@link FormGroupDirective} (selector:
+ * `[formGroup]`).
+ *
+ * It accepts the string name of the nested {\@link FormArray} you want to link, and
+ * will look for a {\@link FormArray} registered with that name in the parent
+ * {\@link FormGroup} instance you passed into {\@link FormGroupDirective}.
+ *
+ * Nested form arrays can come in handy when you have a group of form controls but
+ * you're not sure how many there will be. Form arrays allow you to create new
+ * form controls dynamically.
+ *
+ * **Access the array**: You can access the associated {\@link FormArray} using the
+ * {\@link AbstractControl#get} method on the parent {\@link FormGroup}.
+ * Ex: `this.form.get('cities')`.
+ *
+ * **Get the value**: the `value` property is always synced and available on the
+ * {\@link FormArray}. See a full list of available properties in {\@link AbstractControl}.
+ *
+ * **Set the value**: You can set an initial value for each child control when instantiating
+ * the {\@link FormArray}, or you can set the value programmatically later using the
+ * {\@link FormArray}'s {\@link AbstractControl#setValue} or {\@link AbstractControl#patchValue}
+ * methods.
+ *
+ * **Listen to value**: If you want to listen to changes in the value of the array, you can
+ * subscribe to the {\@link FormArray}'s {\@link AbstractControl#valueChanges} event.  You can also
+ * listen to its {\@link AbstractControl#statusChanges} event to be notified when the validation
+ * status is re-calculated.
+ *
+ * **Add new controls**: You can add new controls to the {\@link FormArray} dynamically by
+ * calling its {\@link FormArray#push} method.
+ *  Ex: `this.form.get('cities').push(new FormControl());`
+ *
+ * ### Example
+ *
+ * {\@example forms/ts/nestedFormArray/nested_form_array_example.ts region='Component'}
+ *
+ * * **npm package**: `\@angular/forms`
+ *
+ * * **NgModule**: `ReactiveFormsModule`
+ *
+ * \@stable
+ */
+var FormArrayName = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormArrayName, _super);
+    /**
+     * @param {?} parent
+     * @param {?} validators
+     * @param {?} asyncValidators
+     */
+    function FormArrayName(parent, validators, asyncValidators) {
+        var _this = _super.call(this) || this;
+        _this._parent = parent;
+        _this._validators = validators;
+        _this._asyncValidators = asyncValidators;
+        return _this;
+    }
+    /**
+     * @return {?}
+     */
+    FormArrayName.prototype.ngOnInit = function () {
+        this._checkParentType(); /** @type {?} */
+        ((this.formDirective)).addFormArray(this);
+    };
+    /**
+     * @return {?}
+     */
+    FormArrayName.prototype.ngOnDestroy = function () {
+        if (this.formDirective) {
+            this.formDirective.removeFormArray(this);
+        }
+    };
+    Object.defineProperty(FormArrayName.prototype, "control", {
+        /**
+         * @return {?}
+         */
+        get: function () { return ((this.formDirective)).getFormArray(this); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormArrayName.prototype, "formDirective", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return this._parent ? (this._parent.formDirective) : null;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormArrayName.prototype, "path", {
+        /**
+         * @return {?}
+         */
+        get: function () { return controlPath(this.name, this._parent); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormArrayName.prototype, "validator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return composeValidators(this._validators); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormArrayName.prototype, "asyncValidator", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return composeAsyncValidators(this._asyncValidators);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @return {?}
+     */
+    FormArrayName.prototype._checkParentType = function () {
+        if (_hasInvalidParent(this._parent)) {
+            ReactiveErrors.arrayParentException();
+        }
+    };
+    return FormArrayName;
+}(ControlContainer));
+FormArrayName.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: '[formArrayName]', providers: [formArrayNameProvider] },] },
+];
+/**
+ * @nocollapse
+ */
+FormArrayName.ctorParameters = function () { return [
+    { type: ControlContainer, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["SkipSelf"] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+]; };
+FormArrayName.propDecorators = {
+    'name': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['formArrayName',] },],
+};
+/**
+ * @param {?} parent
+ * @return {?}
+ */
+function _hasInvalidParent(parent) {
+    return !(parent instanceof FormGroupName) && !(parent instanceof FormGroupDirective) &&
+        !(parent instanceof FormArrayName);
+}
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var controlNameBinding = {
+    provide: NgControl,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return FormControlName; })
+};
+/**
+ * \@whatItDoes Syncs a {\@link FormControl} in an existing {\@link FormGroup} to a form control
+ * element by name.
+ *
+ * In other words, this directive ensures that any values written to the {\@link FormControl}
+ * instance programmatically will be written to the DOM element (model -> view). Conversely,
+ * any values written to the DOM element through user input will be reflected in the
+ * {\@link FormControl} instance (view -> model).
+ *
+ * \@howToUse
+ *
+ * This directive is designed to be used with a parent {\@link FormGroupDirective} (selector:
+ * `[formGroup]`).
+ *
+ * It accepts the string name of the {\@link FormControl} instance you want to
+ * link, and will look for a {\@link FormControl} registered with that name in the
+ * closest {\@link FormGroup} or {\@link FormArray} above it.
+ *
+ * **Access the control**: You can access the {\@link FormControl} associated with
+ * this directive by using the {\@link AbstractControl#get} method.
+ * Ex: `this.form.get('first');`
+ *
+ * **Get value**: the `value` property is always synced and available on the {\@link FormControl}.
+ * See a full list of available properties in {\@link AbstractControl}.
+ *
+ *  **Set value**: You can set an initial value for the control when instantiating the
+ *  {\@link FormControl}, or you can set it programmatically later using
+ *  {\@link AbstractControl#setValue} or {\@link AbstractControl#patchValue}.
+ *
+ * **Listen to value**: If you want to listen to changes in the value of the control, you can
+ * subscribe to the {\@link AbstractControl#valueChanges} event.  You can also listen to
+ * {\@link AbstractControl#statusChanges} to be notified when the validation status is
+ * re-calculated.
+ *
+ * ### Example
+ *
+ * In this example, we create form controls for first name and last name.
+ *
+ * {\@example forms/ts/simpleFormGroup/simple_form_group_example.ts region='Component'}
+ *
+ * To see `formControlName` examples with different form control types, see:
+ *
+ * * Radio buttons: {\@link RadioControlValueAccessor}
+ * * Selects: {\@link SelectControlValueAccessor}
+ *
+ * **npm package**: `\@angular/forms`
+ *
+ * **NgModule**: {\@link ReactiveFormsModule}
+ *
+ *  \@stable
+ */
+var FormControlName = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](FormControlName, _super);
+    /**
+     * @param {?} parent
+     * @param {?} validators
+     * @param {?} asyncValidators
+     * @param {?} valueAccessors
+     */
+    function FormControlName(parent, validators, asyncValidators, valueAccessors) {
+        var _this = _super.call(this) || this;
+        _this._added = false;
+        _this.update = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["EventEmitter"]();
+        _this._parent = parent;
+        _this._rawValidators = validators || [];
+        _this._rawAsyncValidators = asyncValidators || [];
+        _this.valueAccessor = selectValueAccessor(_this, valueAccessors);
+        return _this;
+    }
+    Object.defineProperty(FormControlName.prototype, "isDisabled", {
+        /**
+         * @param {?} isDisabled
+         * @return {?}
+         */
+        set: function (isDisabled) { ReactiveErrors.disabledAttrWarning(); },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    FormControlName.prototype.ngOnChanges = function (changes) {
+        if (!this._added)
+            this._setUpControl();
+        if (isPropertyUpdated(changes, this.viewModel)) {
+            this.viewModel = this.model;
+            this.formDirective.updateModel(this, this.model);
+        }
+    };
+    /**
+     * @return {?}
+     */
+    FormControlName.prototype.ngOnDestroy = function () {
+        if (this.formDirective) {
+            this.formDirective.removeControl(this);
+        }
+    };
+    /**
+     * @param {?} newValue
+     * @return {?}
+     */
+    FormControlName.prototype.viewToModelUpdate = function (newValue) {
+        this.viewModel = newValue;
+        this.update.emit(newValue);
+    };
+    Object.defineProperty(FormControlName.prototype, "path", {
+        /**
+         * @return {?}
+         */
+        get: function () { return controlPath(this.name, /** @type {?} */ ((this._parent))); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlName.prototype, "formDirective", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._parent ? this._parent.formDirective : null; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlName.prototype, "validator", {
+        /**
+         * @return {?}
+         */
+        get: function () { return composeValidators(this._rawValidators); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlName.prototype, "asyncValidator", {
+        /**
+         * @return {?}
+         */
+        get: function () {
+            return ((composeAsyncValidators(this._rawAsyncValidators)));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FormControlName.prototype, "control", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._control; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @return {?}
+     */
+    FormControlName.prototype._checkParentType = function () {
+        if (!(this._parent instanceof FormGroupName) &&
+            this._parent instanceof AbstractFormGroupDirective) {
+            ReactiveErrors.ngModelGroupException();
+        }
+        else if (!(this._parent instanceof FormGroupName) && !(this._parent instanceof FormGroupDirective) &&
+            !(this._parent instanceof FormArrayName)) {
+            ReactiveErrors.controlParentException();
+        }
+    };
+    /**
+     * @return {?}
+     */
+    FormControlName.prototype._setUpControl = function () {
+        this._checkParentType();
+        this._control = this.formDirective.addControl(this);
+        if (this.control.disabled && ((this.valueAccessor)).setDisabledState) {
+            ((((this.valueAccessor)).setDisabledState))(true);
+        }
+        this._added = true;
+    };
+    return FormControlName;
+}(NgControl));
+FormControlName.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{ selector: '[formControlName]', providers: [controlNameBinding] },] },
+];
+/**
+ * @nocollapse
+ */
+FormControlName.ctorParameters = function () { return [
+    { type: ControlContainer, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Host"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["SkipSelf"] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_ASYNC_VALIDATORS,] },] },
+    { type: Array, decorators: [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Optional"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Self"] }, { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Inject"], args: [NG_VALUE_ACCESSOR,] },] },
+]; };
+FormControlName.propDecorators = {
+    'name': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['formControlName',] },],
+    'model': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['ngModel',] },],
+    'update': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Output"], args: ['ngModelChange',] },],
+    'isDisabled': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"], args: ['disabled',] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var REQUIRED_VALIDATOR = {
+    provide: NG_VALIDATORS,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return RequiredValidator; }),
+    multi: true
+};
+var CHECKBOX_REQUIRED_VALIDATOR = {
+    provide: NG_VALIDATORS,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return CheckboxRequiredValidator; }),
+    multi: true
+};
+/**
+ * A Directive that adds the `required` validator to any controls marked with the
+ * `required` attribute, via the {\@link NG_VALIDATORS} binding.
+ *
+ * ### Example
+ *
+ * ```
+ * <input name="fullName" ngModel required>
+ * ```
+ *
+ * \@stable
+ */
+var RequiredValidator = (function () {
+    function RequiredValidator() {
+    }
+    Object.defineProperty(RequiredValidator.prototype, "required", {
+        /**
+         * @return {?}
+         */
+        get: function () { return this._required; },
+        /**
+         * @param {?} value
+         * @return {?}
+         */
+        set: function (value) {
+            this._required = value != null && value !== false && "" + value !== 'false';
+            if (this._onChange)
+                this._onChange();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} c
+     * @return {?}
+     */
+    RequiredValidator.prototype.validate = function (c) {
+        return this.required ? Validators.required(c) : null;
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    RequiredValidator.prototype.registerOnValidatorChange = function (fn) { this._onChange = fn; };
+    return RequiredValidator;
+}());
+RequiredValidator.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: ':not([type=checkbox])[required][formControlName],:not([type=checkbox])[required][formControl],:not([type=checkbox])[required][ngModel]',
+                providers: [REQUIRED_VALIDATOR],
+                host: { '[attr.required]': 'required ? "" : null' }
+            },] },
+];
+/**
+ * @nocollapse
+ */
+RequiredValidator.ctorParameters = function () { return []; };
+RequiredValidator.propDecorators = {
+    'required': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+/**
+ * A Directive that adds the `required` validator to checkbox controls marked with the
+ * `required` attribute, via the {\@link NG_VALIDATORS} binding.
+ *
+ * ### Example
+ *
+ * ```
+ * <input type="checkbox" name="active" ngModel required>
+ * ```
+ *
+ * \@experimental
+ */
+var CheckboxRequiredValidator = (function (_super) {
+    __WEBPACK_IMPORTED_MODULE_0_tslib__["a" /* __extends */](CheckboxRequiredValidator, _super);
+    function CheckboxRequiredValidator() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    /**
+     * @param {?} c
+     * @return {?}
+     */
+    CheckboxRequiredValidator.prototype.validate = function (c) {
+        return this.required ? Validators.requiredTrue(c) : null;
+    };
+    return CheckboxRequiredValidator;
+}(RequiredValidator));
+CheckboxRequiredValidator.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'input[type=checkbox][required][formControlName],input[type=checkbox][required][formControl],input[type=checkbox][required][ngModel]',
+                providers: [CHECKBOX_REQUIRED_VALIDATOR],
+                host: { '[attr.required]': 'required ? "" : null' }
+            },] },
+];
+/**
+ * @nocollapse
+ */
+CheckboxRequiredValidator.ctorParameters = function () { return []; };
+/**
+ * Provider which adds {\@link EmailValidator} to {\@link NG_VALIDATORS}.
+ */
+var EMAIL_VALIDATOR = {
+    provide: NG_VALIDATORS,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return EmailValidator; }),
+    multi: true
+};
+/**
+ * A Directive that adds the `email` validator to controls marked with the
+ * `email` attribute, via the {\@link NG_VALIDATORS} binding.
+ *
+ * ### Example
+ *
+ * ```
+ * <input type="email" name="email" ngModel email>
+ * <input type="email" name="email" ngModel email="true">
+ * <input type="email" name="email" ngModel [email]="true">
+ * ```
+ *
+ * \@experimental
+ */
+var EmailValidator = (function () {
+    function EmailValidator() {
+    }
+    Object.defineProperty(EmailValidator.prototype, "email", {
+        /**
+         * @param {?} value
+         * @return {?}
+         */
+        set: function (value) {
+            this._enabled = value === '' || value === true || value === 'true';
+            if (this._onChange)
+                this._onChange();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * @param {?} c
+     * @return {?}
+     */
+    EmailValidator.prototype.validate = function (c) {
+        return this._enabled ? Validators.email(c) : null;
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    EmailValidator.prototype.registerOnValidatorChange = function (fn) { this._onChange = fn; };
+    return EmailValidator;
+}());
+EmailValidator.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[email][formControlName],[email][formControl],[email][ngModel]',
+                providers: [EMAIL_VALIDATOR]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+EmailValidator.ctorParameters = function () { return []; };
+EmailValidator.propDecorators = {
+    'email': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+/**
+ * Provider which adds {\@link MinLengthValidator} to {\@link NG_VALIDATORS}.
+ *
+ * ## Example:
+ *
+ * {\@example common/forms/ts/validators/validators.ts region='min'}
+ */
+var MIN_LENGTH_VALIDATOR = {
+    provide: NG_VALIDATORS,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return MinLengthValidator; }),
+    multi: true
+};
+/**
+ * A directive which installs the {\@link MinLengthValidator} for any `formControlName`,
+ * `formControl`, or control with `ngModel` that also has a `minlength` attribute.
+ *
+ * \@stable
+ */
+var MinLengthValidator = (function () {
+    function MinLengthValidator() {
+    }
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    MinLengthValidator.prototype.ngOnChanges = function (changes) {
+        if ('minlength' in changes) {
+            this._createValidator();
+            if (this._onChange)
+                this._onChange();
+        }
+    };
+    /**
+     * @param {?} c
+     * @return {?}
+     */
+    MinLengthValidator.prototype.validate = function (c) {
+        return this.minlength == null ? null : this._validator(c);
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    MinLengthValidator.prototype.registerOnValidatorChange = function (fn) { this._onChange = fn; };
+    /**
+     * @return {?}
+     */
+    MinLengthValidator.prototype._createValidator = function () {
+        this._validator = Validators.minLength(parseInt(this.minlength, 10));
+    };
+    return MinLengthValidator;
+}());
+MinLengthValidator.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[minlength][formControlName],[minlength][formControl],[minlength][ngModel]',
+                providers: [MIN_LENGTH_VALIDATOR],
+                host: { '[attr.minlength]': 'minlength ? minlength : null' }
+            },] },
+];
+/**
+ * @nocollapse
+ */
+MinLengthValidator.ctorParameters = function () { return []; };
+MinLengthValidator.propDecorators = {
+    'minlength': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+/**
+ * Provider which adds {\@link MaxLengthValidator} to {\@link NG_VALIDATORS}.
+ *
+ * ## Example:
+ *
+ * {\@example common/forms/ts/validators/validators.ts region='max'}
+ */
+var MAX_LENGTH_VALIDATOR = {
+    provide: NG_VALIDATORS,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return MaxLengthValidator; }),
+    multi: true
+};
+/**
+ * A directive which installs the {\@link MaxLengthValidator} for any `formControlName,
+ * `formControl`,
+ * or control with `ngModel` that also has a `maxlength` attribute.
+ *
+ * \@stable
+ */
+var MaxLengthValidator = (function () {
+    function MaxLengthValidator() {
+    }
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    MaxLengthValidator.prototype.ngOnChanges = function (changes) {
+        if ('maxlength' in changes) {
+            this._createValidator();
+            if (this._onChange)
+                this._onChange();
+        }
+    };
+    /**
+     * @param {?} c
+     * @return {?}
+     */
+    MaxLengthValidator.prototype.validate = function (c) {
+        return this.maxlength != null ? this._validator(c) : null;
+    };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    MaxLengthValidator.prototype.registerOnValidatorChange = function (fn) { this._onChange = fn; };
+    /**
+     * @return {?}
+     */
+    MaxLengthValidator.prototype._createValidator = function () {
+        this._validator = Validators.maxLength(parseInt(this.maxlength, 10));
+    };
+    return MaxLengthValidator;
+}());
+MaxLengthValidator.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[maxlength][formControlName],[maxlength][formControl],[maxlength][ngModel]',
+                providers: [MAX_LENGTH_VALIDATOR],
+                host: { '[attr.maxlength]': 'maxlength ? maxlength : null' }
+            },] },
+];
+/**
+ * @nocollapse
+ */
+MaxLengthValidator.ctorParameters = function () { return []; };
+MaxLengthValidator.propDecorators = {
+    'maxlength': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+var PATTERN_VALIDATOR = {
+    provide: NG_VALIDATORS,
+    useExisting: Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["forwardRef"])(function () { return PatternValidator; }),
+    multi: true
+};
+/**
+ * A Directive that adds the `pattern` validator to any controls marked with the
+ * `pattern` attribute, via the {\@link NG_VALIDATORS} binding. Uses attribute value
+ * as the regex to validate Control value against.  Follows pattern attribute
+ * semantics; i.e. regex must match entire Control value.
+ *
+ * ### Example
+ *
+ * ```
+ * <input [name]="fullName" pattern="[a-zA-Z ]*" ngModel>
+ * ```
+ * \@stable
+ */
+var PatternValidator = (function () {
+    function PatternValidator() {
+    }
+    /**
+     * @param {?} changes
+     * @return {?}
+     */
+    PatternValidator.prototype.ngOnChanges = function (changes) {
+        if ('pattern' in changes) {
+            this._createValidator();
+            if (this._onChange)
+                this._onChange();
+        }
+    };
+    /**
+     * @param {?} c
+     * @return {?}
+     */
+    PatternValidator.prototype.validate = function (c) { return this._validator(c); };
+    /**
+     * @param {?} fn
+     * @return {?}
+     */
+    PatternValidator.prototype.registerOnValidatorChange = function (fn) { this._onChange = fn; };
+    /**
+     * @return {?}
+     */
+    PatternValidator.prototype._createValidator = function () { this._validator = Validators.pattern(this.pattern); };
+    return PatternValidator;
+}());
+PatternValidator.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: '[pattern][formControlName],[pattern][formControl],[pattern][ngModel]',
+                providers: [PATTERN_VALIDATOR],
+                host: { '[attr.pattern]': 'pattern ? pattern : null' }
+            },] },
+];
+/**
+ * @nocollapse
+ */
+PatternValidator.ctorParameters = function () { return []; };
+PatternValidator.propDecorators = {
+    'pattern': [{ type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Input"] },],
+};
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * \@whatItDoes Creates an {\@link AbstractControl} from a user-specified configuration.
+ *
+ * It is essentially syntactic sugar that shortens the `new FormGroup()`,
+ * `new FormControl()`, and `new FormArray()` boilerplate that can build up in larger
+ * forms.
+ *
+ * \@howToUse
+ *
+ * To use, inject `FormBuilder` into your component class. You can then call its methods
+ * directly.
+ *
+ * {\@example forms/ts/formBuilder/form_builder_example.ts region='Component'}
+ *
+ *  * **npm package**: `\@angular/forms`
+ *
+ *  * **NgModule**: {\@link ReactiveFormsModule}
+ *
+ * \@stable
+ */
+var FormBuilder = (function () {
+    function FormBuilder() {
+    }
+    /**
+     * Construct a new {\@link FormGroup} with the given map of configuration.
+     * Valid keys for the `extra` parameter map are `validator` and `asyncValidator`.
+     *
+     * See the {\@link FormGroup} constructor for more details.
+     * @param {?} controlsConfig
+     * @param {?=} extra
+     * @return {?}
+     */
+    FormBuilder.prototype.group = function (controlsConfig, extra) {
+        if (extra === void 0) { extra = null; }
+        var /** @type {?} */ controls = this._reduceControls(controlsConfig);
+        var /** @type {?} */ validator = extra != null ? extra['validator'] : null;
+        var /** @type {?} */ asyncValidator = extra != null ? extra['asyncValidator'] : null;
+        return new FormGroup(controls, validator, asyncValidator);
+    };
+    /**
+     * Construct a new {\@link FormControl} with the given `formState`,`validator`, and
+     * `asyncValidator`.
+     *
+     * `formState` can either be a standalone value for the form control or an object
+     * that contains both a value and a disabled status.
+     *
+     * @param {?} formState
+     * @param {?=} validator
+     * @param {?=} asyncValidator
+     * @return {?}
+     */
+    FormBuilder.prototype.control = function (formState, validator, asyncValidator) {
+        return new FormControl(formState, validator, asyncValidator);
+    };
+    /**
+     * Construct a {\@link FormArray} from the given `controlsConfig` array of
+     * configuration, with the given optional `validator` and `asyncValidator`.
+     * @param {?} controlsConfig
+     * @param {?=} validator
+     * @param {?=} asyncValidator
+     * @return {?}
+     */
+    FormBuilder.prototype.array = function (controlsConfig, validator, asyncValidator) {
+        var _this = this;
+        var /** @type {?} */ controls = controlsConfig.map(function (c) { return _this._createControl(c); });
+        return new FormArray(controls, validator, asyncValidator);
+    };
+    /**
+     * \@internal
+     * @param {?} controlsConfig
+     * @return {?}
+     */
+    FormBuilder.prototype._reduceControls = function (controlsConfig) {
+        var _this = this;
+        var /** @type {?} */ controls = {};
+        Object.keys(controlsConfig).forEach(function (controlName) {
+            controls[controlName] = _this._createControl(controlsConfig[controlName]);
+        });
+        return controls;
+    };
+    /**
+     * \@internal
+     * @param {?} controlConfig
+     * @return {?}
+     */
+    FormBuilder.prototype._createControl = function (controlConfig) {
+        if (controlConfig instanceof FormControl || controlConfig instanceof FormGroup ||
+            controlConfig instanceof FormArray) {
+            return controlConfig;
+        }
+        else if (Array.isArray(controlConfig)) {
+            var /** @type {?} */ value = controlConfig[0];
+            var /** @type {?} */ validator = controlConfig.length > 1 ? controlConfig[1] : null;
+            var /** @type {?} */ asyncValidator = controlConfig.length > 2 ? controlConfig[2] : null;
+            return this.control(value, validator, asyncValidator);
+        }
+        else {
+            return this.control(controlConfig);
+        }
+    };
+    return FormBuilder;
+}());
+FormBuilder.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Injectable"] },
+];
+/**
+ * @nocollapse
+ */
+FormBuilder.ctorParameters = function () { return []; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @module
+ * @description
+ * Entry point for all public APIs of the common package.
+ */
+/**
+ * \@stable
+ */
+var VERSION = new __WEBPACK_IMPORTED_MODULE_1__angular_core__["Version"]('4.3.5');
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * \@whatItDoes Adds `novalidate` attribute to all forms by default.
+ *
+ * `novalidate` is used to disable browser's native form validation.
+ *
+ * If you want to use native validation with Angular forms, just add `ngNativeValidate` attribute:
+ *
+ * ```
+ * <form ngNativeValidate></form>
+ * ```
+ *
+ * \@experimental
+ */
+var NgNoValidate = (function () {
+    function NgNoValidate() {
+    }
+    return NgNoValidate;
+}());
+NgNoValidate.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["Directive"], args: [{
+                selector: 'form:not([ngNoForm]):not([ngNativeValidate])',
+                host: { 'novalidate': '' },
+            },] },
+];
+/**
+ * @nocollapse
+ */
+NgNoValidate.ctorParameters = function () { return []; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+var SHARED_FORM_DIRECTIVES = [
+    NgNoValidate,
+    NgSelectOption,
+    NgSelectMultipleOption,
+    DefaultValueAccessor,
+    NumberValueAccessor,
+    RangeValueAccessor,
+    CheckboxControlValueAccessor,
+    SelectControlValueAccessor,
+    SelectMultipleControlValueAccessor,
+    RadioControlValueAccessor,
+    NgControlStatus,
+    NgControlStatusGroup,
+    RequiredValidator,
+    MinLengthValidator,
+    MaxLengthValidator,
+    PatternValidator,
+    CheckboxRequiredValidator,
+    EmailValidator,
+];
+var TEMPLATE_DRIVEN_DIRECTIVES = [NgModel, NgModelGroup, NgForm];
+var REACTIVE_DRIVEN_DIRECTIVES = [FormControlDirective, FormGroupDirective, FormControlName, FormGroupName, FormArrayName];
+/**
+ * Internal module used for sharing directives between FormsModule and ReactiveFormsModule
+ */
+var InternalFormsSharedModule = (function () {
+    function InternalFormsSharedModule() {
+    }
+    return InternalFormsSharedModule;
+}());
+InternalFormsSharedModule.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["NgModule"], args: [{
+                declarations: SHARED_FORM_DIRECTIVES,
+                exports: SHARED_FORM_DIRECTIVES,
+            },] },
+];
+/**
+ * @nocollapse
+ */
+InternalFormsSharedModule.ctorParameters = function () { return []; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * The ng module for forms.
+ * \@stable
+ */
+var FormsModule = (function () {
+    function FormsModule() {
+    }
+    return FormsModule;
+}());
+FormsModule.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["NgModule"], args: [{
+                declarations: TEMPLATE_DRIVEN_DIRECTIVES,
+                providers: [RadioControlRegistry],
+                exports: [InternalFormsSharedModule, TEMPLATE_DRIVEN_DIRECTIVES]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+FormsModule.ctorParameters = function () { return []; };
+/**
+ * The ng module for reactive forms.
+ * \@stable
+ */
+var ReactiveFormsModule = (function () {
+    function ReactiveFormsModule() {
+    }
+    return ReactiveFormsModule;
+}());
+ReactiveFormsModule.decorators = [
+    { type: __WEBPACK_IMPORTED_MODULE_1__angular_core__["NgModule"], args: [{
+                declarations: [REACTIVE_DRIVEN_DIRECTIVES],
+                providers: [FormBuilder, RadioControlRegistry],
+                exports: [InternalFormsSharedModule, REACTIVE_DRIVEN_DIRECTIVES]
+            },] },
+];
+/**
+ * @nocollapse
+ */
+ReactiveFormsModule.ctorParameters = function () { return []; };
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @module
+ * @description
+ * This module is used for handling user input, by defining and building a {@link FormGroup} that
+ * consists of {@link FormControl} objects, and mapping them onto the DOM. {@link FormControl}
+ * objects can then be used to read information from the form DOM elements.
+ *
+ * Forms providers are not included in default providers; you must import these providers
+ * explicitly.
+ */
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
+ * @module
+ * @description
+ * Entry point for all public APIs of the forms package.
+ */
+// This file only reexports content of the `src` folder. Keep it that way.
+/**
+ * Generated bundle index. Do not edit.
+ */
+
+//# sourceMappingURL=forms.es5.js.map
+
+
+/***/ }),
+/* 52 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var ForkJoinObservable_1 = __webpack_require__(53);
+exports.forkJoin = ForkJoinObservable_1.ForkJoinObservable.create;
+//# sourceMappingURL=forkJoin.js.map
+
+/***/ }),
+/* 53 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var Observable_1 = __webpack_require__(1);
+var EmptyObservable_1 = __webpack_require__(32);
+var isArray_1 = __webpack_require__(25);
+var subscribeToResult_1 = __webpack_require__(35);
+var OuterSubscriber_1 = __webpack_require__(34);
+/**
+ * We need this JSDoc comment for affecting ESDoc.
+ * @extends {Ignored}
+ * @hide true
+ */
+var ForkJoinObservable = (function (_super) {
+    __extends(ForkJoinObservable, _super);
+    function ForkJoinObservable(sources, resultSelector) {
+        _super.call(this);
+        this.sources = sources;
+        this.resultSelector = resultSelector;
+    }
+    /* tslint:enable:max-line-length */
+    /**
+     * @param sources
+     * @return {any}
+     * @static true
+     * @name forkJoin
+     * @owner Observable
+     */
+    ForkJoinObservable.create = function () {
+        var sources = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            sources[_i - 0] = arguments[_i];
+        }
+        if (sources === null || arguments.length === 0) {
+            return new EmptyObservable_1.EmptyObservable();
+        }
+        var resultSelector = null;
+        if (typeof sources[sources.length - 1] === 'function') {
+            resultSelector = sources.pop();
+        }
+        // if the first and only other argument besides the resultSelector is an array
+        // assume it's been called with `forkJoin([obs1, obs2, obs3], resultSelector)`
+        if (sources.length === 1 && isArray_1.isArray(sources[0])) {
+            sources = sources[0];
+        }
+        if (sources.length === 0) {
+            return new EmptyObservable_1.EmptyObservable();
+        }
+        return new ForkJoinObservable(sources, resultSelector);
+    };
+    ForkJoinObservable.prototype._subscribe = function (subscriber) {
+        return new ForkJoinSubscriber(subscriber, this.sources, this.resultSelector);
+    };
+    return ForkJoinObservable;
+}(Observable_1.Observable));
+exports.ForkJoinObservable = ForkJoinObservable;
+/**
+ * We need this JSDoc comment for affecting ESDoc.
+ * @ignore
+ * @extends {Ignored}
+ */
+var ForkJoinSubscriber = (function (_super) {
+    __extends(ForkJoinSubscriber, _super);
+    function ForkJoinSubscriber(destination, sources, resultSelector) {
+        _super.call(this, destination);
+        this.sources = sources;
+        this.resultSelector = resultSelector;
+        this.completed = 0;
+        this.haveValues = 0;
+        var len = sources.length;
+        this.total = len;
+        this.values = new Array(len);
+        for (var i = 0; i < len; i++) {
+            var source = sources[i];
+            var innerSubscription = subscribeToResult_1.subscribeToResult(this, source, null, i);
+            if (innerSubscription) {
+                innerSubscription.outerIndex = i;
+                this.add(innerSubscription);
+            }
+        }
+    }
+    ForkJoinSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+        this.values[outerIndex] = innerValue;
+        if (!innerSub._hasValue) {
+            innerSub._hasValue = true;
+            this.haveValues++;
+        }
+    };
+    ForkJoinSubscriber.prototype.notifyComplete = function (innerSub) {
+        var destination = this.destination;
+        var _a = this, haveValues = _a.haveValues, resultSelector = _a.resultSelector, values = _a.values;
+        var len = values.length;
+        if (!innerSub._hasValue) {
+            destination.complete();
+            return;
+        }
+        this.completed++;
+        if (this.completed !== len) {
+            return;
+        }
+        if (haveValues === len) {
+            var value = resultSelector ? resultSelector.apply(this, values) : values;
+            destination.next(value);
+        }
+        destination.complete();
+    };
+    return ForkJoinSubscriber;
+}(OuterSubscriber_1.OuterSubscriber));
+//# sourceMappingURL=ForkJoinObservable.js.map
+
+/***/ }),
+/* 54 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var PromiseObservable_1 = __webpack_require__(55);
+exports.fromPromise = PromiseObservable_1.PromiseObservable.create;
+//# sourceMappingURL=fromPromise.js.map
+
+/***/ }),
+/* 55 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var root_1 = __webpack_require__(3);
+var Observable_1 = __webpack_require__(1);
+/**
+ * We need this JSDoc comment for affecting ESDoc.
+ * @extends {Ignored}
+ * @hide true
+ */
+var PromiseObservable = (function (_super) {
+    __extends(PromiseObservable, _super);
+    function PromiseObservable(promise, scheduler) {
+        _super.call(this);
+        this.promise = promise;
+        this.scheduler = scheduler;
+    }
+    /**
+     * Converts a Promise to an Observable.
+     *
+     * <span class="informal">Returns an Observable that just emits the Promise's
+     * resolved value, then completes.</span>
+     *
+     * Converts an ES2015 Promise or a Promises/A+ spec compliant Promise to an
+     * Observable. If the Promise resolves with a value, the output Observable
+     * emits that resolved value as a `next`, and then completes. If the Promise
+     * is rejected, then the output Observable emits the corresponding Error.
+     *
+     * @example <caption>Convert the Promise returned by Fetch to an Observable</caption>
+     * var result = Rx.Observable.fromPromise(fetch('http://myserver.com/'));
+     * result.subscribe(x => console.log(x), e => console.error(e));
+     *
+     * @see {@link bindCallback}
+     * @see {@link from}
+     *
+     * @param {PromiseLike<T>} promise The promise to be converted.
+     * @param {Scheduler} [scheduler] An optional IScheduler to use for scheduling
+     * the delivery of the resolved value (or the rejection).
+     * @return {Observable<T>} An Observable which wraps the Promise.
+     * @static true
+     * @name fromPromise
+     * @owner Observable
+     */
+    PromiseObservable.create = function (promise, scheduler) {
+        return new PromiseObservable(promise, scheduler);
+    };
+    PromiseObservable.prototype._subscribe = function (subscriber) {
+        var _this = this;
+        var promise = this.promise;
+        var scheduler = this.scheduler;
+        if (scheduler == null) {
+            if (this._isScalar) {
+                if (!subscriber.closed) {
+                    subscriber.next(this.value);
+                    subscriber.complete();
                 }
-            };
-            oriAddListener.apply(data.target, ['readystatechange', newListener]);
-            var storedTask = data.target[XHR_TASK];
-            if (!storedTask) {
-                data.target[XHR_TASK] = task;
-            }
-            sendNative.apply(data.target, data.args);
-            XMLHttpRequest[XHR_SCHEDULED] = true;
-            return task;
-        }
-        function placeholderCallback() { }
-        function clearTask(task) {
-            var data = task.data;
-            // Note - ideally, we would call data.target.removeEventListener here, but it's too late
-            // to prevent it from firing. So instead, we store info for the event listener.
-            data.aborted = true;
-            return abortNative.apply(data.target, data.args);
-        }
-        var openNative = patchMethod(window.XMLHttpRequest.prototype, 'open', function () { return function (self, args) {
-            self[XHR_SYNC] = args[2] == false;
-            return openNative.apply(self, args);
-        }; });
-        var sendNative = patchMethod(window.XMLHttpRequest.prototype, 'send', function () { return function (self, args) {
-            var zone = Zone.current;
-            if (self[XHR_SYNC]) {
-                // if the XHR is sync there is no task to schedule, just execute the code.
-                return sendNative.apply(self, args);
             }
             else {
-                var options = { target: self, isPeriodic: false, delay: null, args: args, aborted: false };
-                return zone.scheduleMacroTask('XMLHttpRequest.send', placeholderCallback, options, scheduleTask, clearTask);
+                promise.then(function (value) {
+                    _this.value = value;
+                    _this._isScalar = true;
+                    if (!subscriber.closed) {
+                        subscriber.next(value);
+                        subscriber.complete();
+                    }
+                }, function (err) {
+                    if (!subscriber.closed) {
+                        subscriber.error(err);
+                    }
+                })
+                    .then(null, function (err) {
+                    // escape the promise trap, throw unhandled errors
+                    root_1.root.setTimeout(function () { throw err; });
+                });
             }
-        }; });
-        var abortNative = patchMethod(window.XMLHttpRequest.prototype, 'abort', function (delegate) { return function (self, args) {
-            var task = findPendingTask(self);
-            if (task && typeof task.type == 'string') {
-                // If the XHR has already completed, do nothing.
-                // If the XHR has already been aborted, do nothing.
-                // Fix #569, call abort multiple times before done will cause
-                // macroTask task count be negative number
-                if (task.cancelFn == null || (task.data && task.data.aborted)) {
-                    return;
+        }
+        else {
+            if (this._isScalar) {
+                if (!subscriber.closed) {
+                    return scheduler.schedule(dispatchNext, 0, { value: this.value, subscriber: subscriber });
                 }
-                task.zone.cancelTask(task);
             }
-            // Otherwise, we are trying to abort an XHR which has not yet been sent, so there is no
-            // task
-            // to cancel. Do nothing.
-        }; });
+            else {
+                promise.then(function (value) {
+                    _this.value = value;
+                    _this._isScalar = true;
+                    if (!subscriber.closed) {
+                        subscriber.add(scheduler.schedule(dispatchNext, 0, { value: value, subscriber: subscriber }));
+                    }
+                }, function (err) {
+                    if (!subscriber.closed) {
+                        subscriber.add(scheduler.schedule(dispatchError, 0, { err: err, subscriber: subscriber }));
+                    }
+                })
+                    .then(null, function (err) {
+                    // escape the promise trap, throw unhandled errors
+                    root_1.root.setTimeout(function () { throw err; });
+                });
+            }
+        }
+    };
+    return PromiseObservable;
+}(Observable_1.Observable));
+exports.PromiseObservable = PromiseObservable;
+function dispatchNext(arg) {
+    var value = arg.value, subscriber = arg.subscriber;
+    if (!subscriber.closed) {
+        subscriber.next(value);
+        subscriber.complete();
     }
-});
-Zone.__load_patch('geolocation', function (global, Zone, api) {
-    /// GEO_LOCATION
-    if (global['navigator'] && global['navigator'].geolocation) {
-        patchPrototype(global['navigator'].geolocation, ['getCurrentPosition', 'watchPosition']);
+}
+function dispatchError(arg) {
+    var err = arg.err, subscriber = arg.subscriber;
+    if (!subscriber.closed) {
+        subscriber.error(err);
     }
-});
-Zone.__load_patch('PromiseRejectionEvent', function (global, Zone, api) {
-    // handle unhandled promise rejection
-    function findPromiseRejectionHandler(evtName) {
-        return function (e) {
-            var eventTasks = findEventTasks(global, evtName);
-            eventTasks.forEach(function (eventTask) {
-                // windows has added unhandledrejection event listener
-                // trigger the event listener
-                var PromiseRejectionEvent = global['PromiseRejectionEvent'];
-                if (PromiseRejectionEvent) {
-                    var evt = new PromiseRejectionEvent(evtName, { promise: e.promise, reason: e.rejection });
-                    eventTask.invoke(evt);
-                }
-            });
-        };
-    }
-    if (global['PromiseRejectionEvent']) {
-        Zone[zoneSymbol('unhandledPromiseRejectionHandler')] =
-            findPromiseRejectionHandler('unhandledrejection');
-        Zone[zoneSymbol('rejectionHandledHandler')] =
-            findPromiseRejectionHandler('rejectionhandled');
-    }
-});
-Zone.__load_patch('util', function (global, Zone, api) {
-    api.patchOnProperties = patchOnProperties;
-    api.patchMethod = patchMethod;
-});
+}
+//# sourceMappingURL=PromiseObservable.js.map
 
+/***/ }),
+/* 56 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var Subscriber_1 = __webpack_require__(4);
 /**
- * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Applies a given `project` function to each value emitted by the source
+ * Observable, and emits the resulting values as an Observable.
  *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * <span class="informal">Like [Array.prototype.map()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map),
+ * it passes each source value through a transformation function to get
+ * corresponding output values.</span>
+ *
+ * <img src="./img/map.png" width="100%">
+ *
+ * Similar to the well known `Array.prototype.map` function, this operator
+ * applies a projection to each value and emits that projection in the output
+ * Observable.
+ *
+ * @example <caption>Map every click to the clientX position of that click</caption>
+ * var clicks = Rx.Observable.fromEvent(document, 'click');
+ * var positions = clicks.map(ev => ev.clientX);
+ * positions.subscribe(x => console.log(x));
+ *
+ * @see {@link mapTo}
+ * @see {@link pluck}
+ *
+ * @param {function(value: T, index: number): R} project The function to apply
+ * to each `value` emitted by the source Observable. The `index` parameter is
+ * the number `i` for the i-th emission that has happened since the
+ * subscription, starting from the number `0`.
+ * @param {any} [thisArg] An optional argument to define what `this` is in the
+ * `project` function.
+ * @return {Observable<R>} An Observable that emits the values from the source
+ * Observable transformed by the given `project` function.
+ * @method map
+ * @owner Observable
  */
-
-})));
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(6)))
+function map(project, thisArg) {
+    if (typeof project !== 'function') {
+        throw new TypeError('argument is not a function. Are you looking for `mapTo()`?');
+    }
+    return this.lift(new MapOperator(project, thisArg));
+}
+exports.map = map;
+var MapOperator = (function () {
+    function MapOperator(project, thisArg) {
+        this.project = project;
+        this.thisArg = thisArg;
+    }
+    MapOperator.prototype.call = function (subscriber, source) {
+        return source.subscribe(new MapSubscriber(subscriber, this.project, this.thisArg));
+    };
+    return MapOperator;
+}());
+exports.MapOperator = MapOperator;
+/**
+ * We need this JSDoc comment for affecting ESDoc.
+ * @ignore
+ * @extends {Ignored}
+ */
+var MapSubscriber = (function (_super) {
+    __extends(MapSubscriber, _super);
+    function MapSubscriber(destination, project, thisArg) {
+        _super.call(this, destination);
+        this.project = project;
+        this.count = 0;
+        this.thisArg = thisArg || this;
+    }
+    // NOTE: This looks unoptimized, but it's actually purposefully NOT
+    // using try/catch optimizations.
+    MapSubscriber.prototype._next = function (value) {
+        var result;
+        try {
+            result = this.project.call(this.thisArg, value, this.count++);
+        }
+        catch (err) {
+            this.destination.error(err);
+            return;
+        }
+        this.destination.next(result);
+    };
+    return MapSubscriber;
+}(Subscriber_1.Subscriber));
+//# sourceMappingURL=map.js.map
 
 /***/ })
 /******/ ]);
