@@ -1,5 +1,6 @@
 <ul>
-    <li *ngFor="let singleGreeting of greetings">
-        {{singleGreeting}}
+    <li *ngFor="let singleGreeting of greetings" red-color>
+        <!--{{// singleGreeting | toUpperCase:arg1:arg2}}-->
+        {{singleGreeting | migdalUpperCase}}
     </li>
 </ul>

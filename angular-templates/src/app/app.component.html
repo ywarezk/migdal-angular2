@@ -1,0 +1,99 @@
+<h1>
+  Angular templates
+</h1>
+
+<h2>
+  Context
+</h2>
+
+<p>
+  the instance of the component
+</p>
+
+<h2>
+  Interpolation
+</h2>
+
+<!-- Syntax : {{expression}} -->
+<p>
+  {{ 1 + 1 }}
+</p>
+<p>
+  {{ 1 + stamNumber }}
+</p>
+<p>
+  {{ 20 + randomNumber() }}
+</p>
+<p>
+  <!--{{stamNumber=3}} !wrong-->
+  <!--{{stamNumber++}} !wrong-->
+</p>
+<p>
+  {{ {'hello': 'world'} }}
+</p>
+
+<h2>
+  communication from class to template and from template to class
+</h2>
+
+<h3>
+  class to template
+</h3>
+
+<p> <!-- like intropolation -->
+  {{randomNumber()}}
+</p>
+
+<p [innerText]="displayCommunicationMessage" [style.backgroundColor]="'red'"> <!-- [propertyName]="expression" -->
+
+</p>
+
+<button disabled>
+  stam button
+</button>
+
+<h3>
+  from template to class
+</h3>
+
+<p (click)="clickOnParagraph($event);" > <!-- (eventName)="functionName()" -->
+  click me
+</p>
+
+<p (click)="stamNumber = stamNumber + 1" > <!-- (eventName)="functionName()" -->
+  click me2
+</p>
+
+<h3>
+  2 way binding
+</h3>
+
+<p> <!-- [(ngModel)]="<public variable>" -->
+  <input name="email" type="email" [(ngModel)]="userEmail" />
+  {{userEmail}}
+</p>
+
+<p>
+  <input (input)="userEmail2 = $event.currentTarget.value" [value]="userEmail2" />
+  {{userEmail2}}
+</p>
+
+<h2>
+  child parent communication
+</h2>
+
+<h3>
+  from parent to child
+</h3>
+
+<!--
+ Syntax:
+ <child [attributeName]="expression"></child>
+-->
+<child [messageFromParent]="messageFromParent"></child>
+
+<h3>
+  from child to parent
+</h3>
+
+<child (clickOnChild)="messageFromChild($event)"></child>

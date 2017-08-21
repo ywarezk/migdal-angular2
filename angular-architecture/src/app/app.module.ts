@@ -10,10 +10,18 @@ import {GreetingFormComponent} from "./components/greeting-form/greeting-form.co
 import {GreetingListComponent} from "./components/greeting-list/greeting-list.component";
 import {GreetingService} from "./services/greeting.service";
 import {FormsModule} from "@angular/forms";
+import {RedColorDirective} from './directives/red-color.directive';
+import {UpperCasePipe} from './pipes/upper-case.pipe';
 
 @NgModule({
     providers: [GreetingService],
-    declarations: [AppComponent, GreetingFormComponent, GreetingListComponent],
+    declarations: [
+        AppComponent,
+        GreetingFormComponent,
+        GreetingListComponent,
+        RedColorDirective,
+        UpperCasePipe
+    ],
     imports: [BrowserModule, UserModule, FormsModule],
     exports: [],
     bootstrap: [AppComponent]

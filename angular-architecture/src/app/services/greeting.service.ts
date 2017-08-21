@@ -6,6 +6,7 @@ import {Injectable} from "@angular/core";
 @Injectable()
 export class GreetingService {
 
+
     private _greetings : string[] = [];
 
     public addGreeting(message : string) {
