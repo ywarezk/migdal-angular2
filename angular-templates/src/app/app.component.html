@@ -64,6 +64,10 @@
   click me2
 </p>
 
+<p [(ngModel)]="pTestNgModel">
+  hell ng model
+</p>
+
 <h3>
   2 way binding
 </h3>
@@ -97,3 +101,100 @@
 </h3>
 
 <child (clickOnChild)="messageFromChild($event)"></child>
+
+<h3>
+  2 way binding
+</h3>
+
+<child [(twoWay)]="twoWayBindingToChild"></child>
+<p>
+  {{ twoWayBindingToChild }}
+</p>
+
+<h3>
+  Template reference variable
+</h3>
+
+<p>
+  variable that exists only in the template
+</p>
+
+<h4>
+  Reference Dom element
+</h4>
+
+<!--<p #<template variable name> ></p> -->
+<p #pDomElement >
+  hello template reference variable
+</p>
+<p>
+  {{ pDomElement.innerText }}
+</p>
+<button (click)="passTemplateVariable(pDomElement);" >
+  pass template reference variable
+</button>
+
+<h4>
+  template reference variable to angular architecture objects
+</h4>
+
+<!-- syntax <p <directive> #<name-of-variable>="<exportAs of directive>" ></p> -->
+<child #referenceToChild ></child>
+<p>
+{{referenceToChild.sayHello()}}
+</p>
+
+<!--<p red-color #refernceDirective="redColor" #pDomElement>-->
+
+<!--</p>-->
+
+<h2>
+  Directives
+</h2>
+
+<h3>
+  *ngIf
+</h3>
+
+<!-- Syntax *ngIf="boolean expression"-->
+
+<p *ngIf="booleanMethodOfP()">
+  ngIf example
+</p>
+
+<h3>
+  *ngFor
+</h3>
+
+<!-- *ngFor="let <variable-Name> of <iterable property>" -->
+<ul>
+  <li *ngFor="let item of groceryList; let i=index">
+     {{item}} {{groceryList[i]}}
+  </li>
+</ul>
+
+<h3>
+  ngStyle
+</h3>
+
+<!--
+ [ngStyle]="{'background-color': 'red', 'height': '100px'}"
+ -->
+
+<!-- [style.backgroundColor]="'red'" [style.height]="'100px'" -->
+
+<h3>
+  ngClass
+</h3>
+
+<!--
+Syntax: [ngClass]="{'migdal': boolean expression}"
+Syntax: [ngClass]="{'migdal': giveMeBooleanValue()}"
+[ngClass]="functionThatReturnsClasses()"
+ -->
+
+<p [ngClass]="functionThatReturnsClasses()">
+  ng class example
+</p>
+
+

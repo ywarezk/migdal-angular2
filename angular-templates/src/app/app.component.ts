@@ -11,6 +11,15 @@ export class AppComponent {
   public userEmail : string = 'yariv@nerdeez.com';
   public userEmail2 : string = 'yariv2@nerdeez.com';
   public messageFromParent : string = 'hello child component from parent';
+  public pTestNgModel : string = 'hello child component from parent';
+
+  public twoWayBindingToChild : string = 'initial two way to child';
+
+  public groceryList : Array<string> = [
+    'Milk',
+    'Sugar',
+    'Eggs'
+  ];
 
   public randomNumber() : number {
     return Math.random();
@@ -22,5 +31,21 @@ export class AppComponent {
 
   messageFromChild(message : string){
     alert(message);
+  }
+
+  passTemplateVariable(p : any){
+    // debugger;
+  }
+
+  booleanMethodOfP() : boolean {
+    return true;
+  }
+
+  functionThatReturnsClasses() {
+    return {
+      'migdal': true,
+      'migdal2': true,
+      'hidden': true
+    }
   }
 }

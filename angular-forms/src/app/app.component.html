@@ -1,0 +1,80 @@
+<h1>@angular/forms</h1>
+
+<h2>
+  NgForm/NgModel
+</h2>
+
+<!--
+Syntax ngModel: [(ngModel)]="variableName"
+-->
+
+<!--
+Syntax ngForm: <form></form>
+-->
+
+<form>
+  <label>
+    username
+  </label>
+  <input
+    #usernameNgModel="ngModel"
+    required
+    pattern="[a-zA-Z]+"
+    minlength="5"
+    [class.is-username-invalid]="usernameNgModel.invalid"
+    maxlength="30" type="text" name="username" [(ngModel)]="username1" />
+  <br/>
+  <label>Mail</label>
+  <input required type="email" name="email" [(ngModel)]="email1" />
+</form>
+
+<h2>
+  validation
+</h2>
+
+<p>
+  When adding NgForm or NgModel Validation classes are added
+</p>
+
+<ul>
+  <li>
+    ng-touched/ng-untouched - when doing focus and blur
+  </li>
+  <li>
+    ng-pristine/ng-dirty - when typing pristine turns to dirty
+  </li>
+  <li>
+    ng-valid/ng-invalid - by html5 validation attributes
+  </li>
+</ul>
+
+<h2>
+  Template reference variable for NgForm
+</h2>
+
+<form #formDirectiveInstance="ngForm" >
+  <label>
+    username
+  </label>
+  <input
+    #usernameNgModel="ngModel"
+    required
+    pattern="[a-zA-Z]+"
+    minlength="5"
+    [class.is-username-invalid]="usernameNgModel.invalid"
+    maxlength="30" type="text" name="username" [(ngModel)]="username1" />
+  <br/>
+  <label>Mail</label>
+  <input #emailNgModel="ngModel" required  type="text" name="email" [(ngModel)]="email1" />
+  <label *ngIf="emailNgModel.errors.pattern">
+    Your pattern is invalid
+  </label >
+  <label *ngIf="emailNgModel.errors.required">
+    this field is required
+  </label>
+  <br/>
+  {{ emailNgModel.errors | json}}
+  <button type="submit" [disabled]="formDirectiveInstance.invalid" >
+    Submit form
+  </button>
+</form>
