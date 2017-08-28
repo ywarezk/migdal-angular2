@@ -20742,6 +20742,19 @@ var GreetingService = (function () {
     GreetingService.prototype.getAllGreeting = function () {
         return this._greetings;
     };
+    /**
+     * delete the index greeting from _greetings
+     * @param index
+     */
+    GreetingService.prototype.deleteGreeting = function (index) {
+        var newGreetingsArray = [];
+        for (var i = 0; i < this._greetings.length; i++) {
+            if (index === i)
+                continue;
+            newGreetingsArray.push(this._greetings[i]);
+        }
+        this._greetings = newGreetingsArray;
+    };
     GreetingService = __decorate([
         core_1.Injectable()
     ], GreetingService);
@@ -30341,6 +30354,9 @@ var GreetingListComponent = (function () {
         this.greetings = [];
         this.greetings = this._greetingService.getAllGreeting();
     }
+    GreetingListComponent.prototype.deleteGreeting = function (index) {
+        this._greetingService.deleteGreeting(index);
+    };
     GreetingListComponent = __decorate([
         core_1.Component({
             selector: 'greeting-list',

@@ -1,6 +1,10 @@
 <ul>
-    <li *ngFor="let singleGreeting of greetings" red-color>
+    <li *ngFor="let singleGreeting of greetings; let i=index" red-color>
         <!--{{// singleGreeting | toUpperCase:arg1:arg2}}-->
         {{singleGreeting | migdalUpperCase}}
+
+        <button (click)="deleteGreeting(i)">
+            Delete greeting
+        </button>
     </li>
 </ul>
