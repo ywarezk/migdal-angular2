@@ -1,0 +1,126 @@
+<h1>angular/router</h1>
+
+<h2>
+  Installation
+</h2>
+
+<p>
+  - to install use npm
+  npm install @angular/router --save
+
+  - fix the base tag
+</p>
+
+<h2>
+  app part 1
+</h2>
+
+<p>
+  - 3 page application
+  - about page
+  - welcome page
+  - 404 page
+  - navigation bar
+</p>
+
+<h2>
+  directive: router-outlet
+</h2>
+
+<p>
+  directive tells the router where to put the component when there is
+  a match
+</p>
+
+<h2>
+  directive: routerLink
+</h2>
+
+<p>
+  link to a different route
+</p>
+
+<h2>
+  Directive: routerLinkActive
+</h2>
+
+<p>
+  place css class on the activated route
+  routerLinkActiveOptions - options to the routerLinkActive
+</p>
+
+<h2>
+  Part 2
+</h2>
+
+<p>
+  - app.module.ts
+    - about page
+    - welcome page
+    - 404
+  - student.module.ts
+    - student-list page
+    - student details page
+    - service to supply students
+    - model Student
+</p>
+
+<h2>
+  routing for our app
+
+  /students - lead me to the student list page
+  /students/:id - lead me to the student details page
+</h2>
+
+<h2>
+  routing architecture
+</h2>
+
+<p>
+  will create a module for routing
+  - student-routing.module.ts
+  - app-routing.module
+
+  - better orgnisation
+  - testability
+</p>
+
+<h2>
+  app-routing.module
+</h2>
+
+<h2>
+  student-routing.module
+</h2>
+
+<p>
+  every module has a routing module defined
+</p>
+
+<h2>
+  DI: Router - Navigate with router
+</h2>
+
+<p>
+  with the router to navigate
+  navigateByUrl
+</p>
+
+<h2>
+  DI: ActivatedRoute
+</h2>
+<p>
+  details about the route including the matrix params
+  and the query params
+</p>
+
+<h2>
+  search students
+</h2>
+<p>
+
+</p>
+
+
+
+
